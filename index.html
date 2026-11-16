@@ -450,9 +450,7 @@ function drawRoom(){
       var st=room[cy*COLS+cx],z=0;
       for(i=0;i<st.length;i++){var it=find(st[i]);if(!it)continue;if(!z&&i===0)shadow(cx+0.5,cy+0.82);stand(it.ck||it.id,it.px,cx+0.5,cy+0.82,z);z+=it.top||0;}
     }
-    if(hostShown()&&cy===host.y){shadow(host.x+0.5,host.y+0.82);stand(host.key,host.px,host.x+0.5,host.y+0.82,0);}
     liveDraw(cy);
-    if(hostShown()&&host.pp&&cy===host.pp[1]){shadow(host.pp[0]+0.5,host.pp[1]+0.82);stand("__pet"+host.pet,PETPX[host.pet],host.pp[0]+0.5,host.pp[1]+0.82,0);}
     if(cy===dr){
       var mz=stackTop(Math.round(me.fy)*COLS+Math.round(me.fx))+(me.jz||0);
       if(me.hop&&me.moving&&me.path.length){
@@ -464,7 +462,6 @@ function drawRoom(){
     }
     if(petKind&&cy===prow){shadow(pfx+0.5,pfy+0.82);stand("__pet"+petKind,PETPX[petKind],pfx+0.5,pfy+0.82,stackTop(Math.round(pfy)*COLS+Math.round(pfx)));}
   }
-  if(hostShown())nameTag(host.name,host.x+0.5,host.y+0.82);
   liveTags();
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
   if(!me.moving&&!me.jumping)syncAct();
@@ -490,7 +487,6 @@ function step(dx,dy){
   var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];if(turned)liveMe(me.x,me.y);
   var tx=me.x+dx,ty=me.y+dy;
   if(tx<0||tx>=COLS||ty<0||ty>=ROWS){drawRoom();if(actTarget()!=="write")setStatus("そっちは壁。");return;}
-  if(hostShown()&&host.x===tx&&host.y===ty){drawRoom();setStatus(host.name+"がいる。");return;}
   var tst=room[ty*COLS+tx];
   if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus(actTarget()==="dress"?"衣装台の前に立った。橙のボタンで着替えられる。拾うこともできる。":"「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
   var d=stackTop(ty*COLS+tx)-stackTop(me.y*COLS+me.x);
@@ -999,17 +995,6 @@ el("post-go").addEventListener("click",function(){
 
 /* ---- 訪ねる ---- */
 function resetMe(){me.x=me.fx=3;me.y=me.fy=5;me.dir=[0,-1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placeMe();placePet();}
-function placeHost(r){
-  host=null;var best=null,bd=99,cx,cy,d=[[1,0],[-1,0],[0,1],[0,-1]],i;
-  for(cy=0;cy<ROWS;cy++)for(cx=0;cx<COLS;cx++){
-    if(!walkable(cx,cy)||(cx===me.x&&cy===me.y)||(petKind&&cx===pet.x&&cy===pet.y))continue;
-    var dd=Math.abs(cx-5)+Math.abs(cy-2);if(dd<bd){bd=dd;best=[cx,cy];}
-  }
-  if(!best)return;
-  var L=r.look,pp=null;
-  if(r.pet)for(i=0;i<4;i++){var nx=best[0]+d[i][0],ny=best[1]+d[i][1];if(walkable(nx,ny)&&!(nx===me.x&&ny===me.y)){pp=[nx,ny];break;}}
-  host={x:best[0],y:best[1],name:r.name,px:makeChar(L),key:"__h"+L.hair+"-"+L.hc+"-"+L.k+"-"+L.o,pet:r.pet,pp:pp};
-}
 function visitRes(id){
   if(phase!=="in"||me.moving||me.jumping)return;
   var r=profiles[id];
@@ -1019,7 +1004,7 @@ function visitRes(id){
   where="res";visitId=id;visitNm=r.name;visitCustom=[];host=null;
   room=r.room.map(function(c){return c.slice();});
   bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");
-  resetMe();placeHost(r);liveJoin();
+  resetMe();liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent=r.name+"の部屋にいる";
   show("room");drawReplies();drawRoom();
   /* その人の自作の家具を読む */
@@ -1083,7 +1068,7 @@ function liveSync(){
     if(!isUuid(k))return;var id=k.toLowerCase();if(id===uid||next[id])return;
     var a=st[k],p=Array.isArray(a)&&a.length?a[a.length-1]:null;
     var ok=p&&typeof p==="object"&&okCell(p.x,p.y),o=live.others[id];
-    if(!o){if(!ok)return;o={id:id,x:p.x,y:p.y,from:[p.x,p.y],t0:0,jt:0,dir:[0,1],px:null,key:""};}
+    if(!o){if(!ok)return;o={id:id,x:p.x,y:p.y,from:[p.x,p.y],t0:0,jt:0,dir:[0,1],px:null,key:"",pp:null,ppFrom:null};petBeside(o);}
     /* presence の位置は入ったときのもの。今の位置は broadcast の知らせで動かす */
     if(!live.others[id]&&p&&okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
     next[id]=o;if(!profiles[id])need.push(id);
@@ -1107,8 +1092,12 @@ function liveMove(p){
   /* 1度に動けるのは隣のマスまで。遠くへ跳んだ知らせは、その場所へ置き直す */
   var far=Math.abs(p.x-o.x)+Math.abs(p.y-o.y)>1;
   var now=performance.now(),k=Math.min(1,(now-o.t0)/STEP);
+  var moved=p.x!==o.x||p.y!==o.y;
   o.from=far?[p.x,p.y]:[o.from[0]+(o.x-o.from[0])*k,o.from[1]+(o.y-o.from[1])*k];
+  /* 猫は、その人が今までいたマスへついて行く */
+  if(moved&&!far){o.ppFrom=o.pp;o.pp=[o.x,o.y];}
   o.x=p.x;o.y=p.y;o.t0=now;
+  if(far)petBeside(o);
   if(okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
   liveKick();
 }
@@ -1125,10 +1114,14 @@ function liveSay(m,tail){
   if(tail==="が来た。"&&performance.now()-live.since<1500)tail="がいる。";
   if(mode==="room"&&!me.moving)setStatus(nm+tail);
 }
+function petBeside(o){
+  var d=[[-1,0],[1,0],[0,1],[0,-1]];o.pp=[o.x,o.y];
+  for(var i=0;i<4;i++){var nx=o.x+d[i][0],ny=o.y+d[i][1];if(walkable(nx,ny)){o.pp=[nx,ny];break;}}
+  o.ppFrom=o.pp;
+}
+function livePet(id){var p=profiles[id];return p?p.pet:0;}
 function liveBusy(){var now=performance.now();for(var id in live.others){var o=live.others[id];if(now-o.t0<STEP||now-o.jt<380)return true;}return false;}
 function liveKick(){if(live.raf)return;live.raf=requestAnimationFrame(function f(){live.raf=0;drawRoom();if(liveBusy())live.raf=requestAnimationFrame(f);});}
-/* 部屋の主がその場にいれば、止まった姿の代わりに本人を見せる */
-function hostShown(){return host&&!(visitId&&live.others[visitId]);}
 function liveDraw(cy){
   var now=performance.now();
   for(var id in live.others){var o=live.others[id],k=Math.min(1,(now-o.t0)/STEP);
@@ -1139,9 +1132,15 @@ function liveDraw(cy){
     var bob=(k<1&&Math.floor(now/120)%2)?1:0;
     shadow(fx+0.5,fy+0.82);stand(o.key,o.px,fx+0.5,fy+0.82,stackTop(Math.round(fy)*COLS+Math.round(fx))+jz+bob);
   }
+  for(id in live.others){o=live.others[id];var pk=livePet(id);if(!pk||!PETPX[pk]||!o.pp)continue;
+    k=Math.min(1,(now-o.t0)/STEP);var a=o.ppFrom||o.pp;
+    if((k<1?Math.max(a[1],o.pp[1]):o.pp[1])!==cy)continue;
+    var px2=a[0]+(o.pp[0]-a[0])*k,py2=a[1]+(o.pp[1]-a[1])*k;
+    shadow(px2+0.5,py2+0.82);stand("__pet"+pk,PETPX[pk],px2+0.5,py2+0.82,stackTop(Math.round(py2)*COLS+Math.round(px2)));
+  }
 }
-function nameTag(nm,X,Z){
-  var b=pr(X,Z,0),s0=T*b[2]/32,y=b[1]-25*s0;
+function nameTag(nm,X,Z,lift){
+  var b=pr(X,Z,0),s0=T*b[2]/32,y=b[1]-(29+(lift||0))*s0;
   rx.font='11px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="bottom";
   var w=rx.measureText(nm).width;
   rx.fillStyle="rgba(21,24,43,0.82)";rx.fillRect(b[0]-w/2-3,y-14,w+6,15);
@@ -1150,7 +1149,9 @@ function nameTag(nm,X,Z){
 function liveTags(){
   var now=performance.now();
   for(var id in live.others){var o=live.others[id],k=Math.min(1,(now-o.t0)/STEP);
-    nameTag(profiles[id]?profiles[id].name:"…",o.from[0]+(o.x-o.from[0])*k+0.5,o.from[1]+(o.y-o.from[1])*k+0.82);}
+    var fx=o.from[0]+(o.x-o.from[0])*k,fy=o.from[1]+(o.y-o.from[1])*k,jk=(now-o.jt)/380;
+    var lift=stackTop(Math.round(fy)*COLS+Math.round(fx))+(jk<1?Math.round(Math.sin(Math.PI*jk)*12):0);
+    nameTag(profiles[id]?profiles[id].name:"…",fx+0.5,fy+0.82,lift);}
 }
 
 var replying=false;
