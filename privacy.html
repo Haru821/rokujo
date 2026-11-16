@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>個人情報の扱い｜六畳の部屋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --night:#15182b;
+  --panel:#20244a;
+  --line:#3a4072;
+  --ink:#f1e9d6;
+  --mute:#a7a5c2;
+  --lamp:#f0a23c;
+  --font:"DotGothic16","Hiragino Kaku Gothic ProN","Yu Gothic",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.8}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 56px;display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:24px;font-weight:400;letter-spacing:.12em}
+h2{margin:0;font-size:17px;font-weight:400;color:var(--lamp);letter-spacing:.06em}
+section{display:flex;flex-direction:column;gap:10px}
+p{margin:0}
+ul{margin:0;padding-left:1.3em}
+li{margin:2px 0}
+.mute{color:var(--mute);font-size:14px}
+.box{padding:12px 14px;background:var(--panel);border-left:4px solid var(--lamp)}
+a{color:var(--lamp)}
+a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>個人情報の扱い</h1>
+    <p class="mute">六畳の部屋　2026年11月16日に定めた</p>
+  </header>
+
+  <p>六畳の部屋は、招かれた人だけが入れる小さな場所です。ここでは、住む人の情報を、何のために、どう扱うかを書きます。</p>
+
+  <section>
+    <h2>1. 受け取る情報</h2>
+    <ul>
+      <li>ログインに使うメールアドレス</li>
+      <li>Google で入った場合は、Google から受け取る名前、メールアドレス、プロフィール写真の場所、Google のアカウントの番号。これ以外は受け取りません</li>
+      <li>住民名、見た目、猫、部屋の並び</li>
+      <li>作った家具、短冊、返事、手紙、管理人への知らせ</li>
+      <li>使った招待コードと、誰に招かれたか</li>
+      <li>入った日時と、書いた日時</li>
+      <li>ログインの記録（日時、通信元の番号（IP アドレス）、ブラウザの種類）</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>2. 使い道</h2>
+    <ul>
+      <li>ログインと、招かれた人だけが入れるようにするため</li>
+      <li>部屋や短冊を、ほかの住民に見せるため</li>
+      <li>困りごとや荒らしに対応するため</li>
+      <li>ログインのためのメールを送るため</li>
+    </ul>
+    <p>ほかの目的には使いません。広告には使いません。売りません。</p>
+  </section>
+
+  <section>
+    <h2>3. 誰に見えるか</h2>
+    <ul>
+      <li>ほかの住民に見えるもの：住民名、見た目、猫、部屋、家具、短冊、返事</li>
+      <li>手紙：出した人と受け取った人だけ。画面の上では管理人にも見えません</li>
+      <li>メールアドレスと Google から受け取った情報：ほかの住民には見えません</li>
+    </ul>
+    <p class="box">運営はデータの置き場所を直接扱えるため、すべての情報を見ることができます。見るのは、不具合を調べるとき、困りごとの知らせに対応するとき、法令にもとづく求めがあったときに限ります。</p>
+  </section>
+
+  <section>
+    <h2>4. 預け先</h2>
+    <p>次の会社のしくみを使っています。それぞれの会社にも情報が渡ります。</p>
+    <ul>
+      <li>Supabase：データとログイン。置き場所はシンガポール</li>
+      <li>GitHub（GitHub Pages）：このページを配る。開いた人の通信元の番号などが残ります</li>
+      <li>Google Fonts と jsDelivr：文字の形と部品を読み込む。開いた人の通信元の番号が送られます</li>
+      <li>Google：Google で入る場合のログイン</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>5. 端末に残すもの</h2>
+    <p>ログインしたままにするため、ブラウザの保存場所にログインの情報を残します。ログアウトすると消えます。人の動きを数える道具や、広告のための仕掛けは使っていません。</p>
+  </section>
+
+  <section>
+    <h2>6. 見る・直す・消す</h2>
+    <p>自分の情報を見たい、直したい、消したいときは、下の連絡先に知らせてください。本人と確かめてから対応します。</p>
+    <p>消すと、部屋、家具、短冊、返事、出した手紙と受け取った手紙が消えます。今は自分で消すボタンがないため、運営が消します。</p>
+  </section>
+
+  <section>
+    <h2>7. この文を変えるとき</h2>
+    <p>変えるときは、このページで知らせます。大きく変えるときは、住民にも知らせます。</p>
+  </section>
+
+  <section>
+    <h2>8. 連絡先</h2>
+    <p>（ここに連絡先を入れる）</p>
+  </section>
+
+  <p><a href="./">六畳の部屋にもどる</a></p>
+</div>
+</body>
+</html>
