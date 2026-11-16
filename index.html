@@ -102,6 +102,10 @@ a.btn{display:block;text-decoration:none;text-align:center}
 .quiet{align-self:flex-start;padding:4px 0;background:transparent;border:0;color:var(--mute);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
 .btn:disabled,.tear:disabled{opacity:.5}
 .plink{color:var(--mute)}
+.say{display:flex;gap:8px;align-items:center}
+.say-label{color:var(--mute);font-size:13px;flex:0 0 auto}
+.say input{flex:1;min-width:0;padding:10px 12px;background:var(--panel);color:var(--ink);border:2px solid var(--line);font:inherit}
+.say .btn{flex:0 0 auto}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -171,6 +175,11 @@ a.btn{display:block;text-decoration:none;text-align:center}
         <button class="btn" id="bag-btn" aria-pressed="false">荷物</button>
         <button class="btn" id="pick-btn">拾う</button>
       </div>
+    </div>
+    <div class="say">
+      <label class="say-label" for="say-in">ひとこと</label>
+      <input id="say-in" type="text" maxlength="30" autocomplete="off" enterkeyhint="send" placeholder="6秒で消える">
+      <button class="btn" id="say-go">話す</button>
     </div>
     <div class="row" id="visit-bar" hidden>
       <span id="visit-name"></span>
@@ -1061,7 +1070,9 @@ el("go-home").addEventListener("click",goHome);
 /* ---- 一緒にいる人：同じ部屋にいる住民の姿と歩く動きを、その場で見せる ----
    通り道は「room:部屋の持ち主の id」。鍵付き（private）で、入場している住民だけが入れる。
    流すのは位置と向きだけ。名前と見た目は、データベースの住民の表から読む。 */
-var live={ch:null,topic:"",others:Object.create(null),raf:0,since:0,ok:false,hiT:0};
+var live={ch:null,topic:"",others:Object.create(null),raf:0,since:0,ok:false,hiT:0,joinT:0};
+/* 1つの部屋に入れるのは、主と客5人の合計6人まで（2026-11-16、はる） */
+var GUESTMAX=5,SAYMAX=30,SAYMS=6000;
 function liveOwner(){return where==="mine"?uid:visitId;}
 function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<COLS&&y>=0&&y<ROWS;}
 function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
@@ -1079,17 +1090,18 @@ function liveJoin(){
     .on("broadcast",{event:"hi"},function(){if(live.ch===ch)liveHello();})
     .on("presence",{event:"leave"},function(m){if(live.ch===ch)liveSay(m,"が出ていった。");})
     .on("broadcast",{event:"mv"},function(m){if(live.ch===ch)liveMove(m&&m.payload);})
-    .on("broadcast",{event:"jp"},function(m){if(live.ch===ch)liveJump(m&&m.payload);});
-  var go=function(){if(live.ch!==ch)return;try{ch.subscribe(function(st){if(live.ch!==ch)return;live.ok=st==="SUBSCRIBED";if(live.ok){live.since=performance.now();liveTrack();liveSend("hi",{});}});}catch(e){}};
+    .on("broadcast",{event:"jp"},function(m){if(live.ch===ch)liveJump(m&&m.payload);})
+    .on("broadcast",{event:"say"},function(m){if(live.ch===ch)liveHear(m&&m.payload);});
+  var go=function(){if(live.ch!==ch)return;try{ch.subscribe(function(st){if(live.ch!==ch)return;live.ok=st==="SUBSCRIBED";if(live.ok){live.since=performance.now();if(!live.joinT)live.joinT=Date.now();liveTrack();liveSend("hi",{});}});}catch(e){}};
   /* ログインの鍵を通り道にも渡してからつなぐ */
   try{Promise.resolve(sb.realtime&&sb.realtime.setAuth?sb.realtime.setAuth():null).then(go,go);}catch(e){go();}
 }
 function liveLeave(){
-  var ch=live.ch;live.ch=null;live.topic="";live.ok=false;live.others=Object.create(null);
+  var ch=live.ch;live.ch=null;live.topic="";live.ok=false;live.joinT=0;live.others=Object.create(null);
   if(ch){try{sb.removeChannel(ch);}catch(e){}}
 }
 /* 「今ここにいる」（presence）は、つないだときだけ出す。何度も出すと Supabase に通り道を切られる */
-function liveTrack(){if(live.ch&&live.ok){try{live.ch.track({x:me.x,y:me.y,dx:me.dir[0],dy:me.dir[1]});}catch(e){}}}
+function liveTrack(){if(live.ch&&live.ok){try{live.ch.track({x:me.x,y:me.y,dx:me.dir[0],dy:me.dir[1],t:live.joinT});}catch(e){}}}
 /* 動きは broadcast で流す。つながっていないときは送らない（別の経路に回さない） */
 function liveSend(ev,p){if(live.ch&&live.ok){try{live.ch.send({type:"broadcast",event:ev,payload:p});}catch(e){}}}
 /* 新しくつないだ人から「hi」が来たら、今の自分の位置を知らせる */
@@ -1098,7 +1110,8 @@ function liveMe(x,y){liveSend("mv",{id:uid,x:x,y:y,dx:me.dir[0],dy:me.dir[1]});}
 function liveSync(){
   var st;try{st=live.ch.presenceState();}catch(e){return;}
   var next=Object.create(null),need=[];
-  Object.keys(st||{}).slice(0,30).forEach(function(k){
+  if(liveFull(st))return;
+  Object.keys(st||{}).slice(0,GUESTMAX+1).forEach(function(k){
     if(!isUuid(k))return;var id=k.toLowerCase();if(id===uid||next[id])return;
     var a=st[k],p=Array.isArray(a)&&a.length?a[a.length-1]:null;
     var ok=p&&typeof p==="object"&&okCell(p.x,p.y),o=live.others[id];
@@ -1110,6 +1123,23 @@ function liveSync(){
   live.others=next;
   if(need.length)liveProfiles(need);
   liveKick();
+}
+/* 客として入ったとき、先に5人の客がいれば帰る。主はいつでも入れる。
+   どちらが先かは、つないだ時刻（t）で決める。決めるのは入ってすぐの間だけ */
+function liveFull(st){
+  if(where!=="res"||!isUuid(visitId)||performance.now()-live.since>4000)return false;
+  var g=[];
+  Object.keys(st||{}).forEach(function(k){
+    if(!isUuid(k))return;var id=k.toLowerCase();if(id===visitId.toLowerCase())return;
+    var a=st[k],p=Array.isArray(a)&&a.length?a[a.length-1]:null,t=p&&typeof p.t==="number"&&isFinite(p.t)?p.t:0;
+    g.push({id:id,t:id===uid?live.joinT:t});
+  });
+  if(g.length<=GUESTMAX)return false;
+  g.sort(function(a,b){return a.t-b.t||(a.id<b.id?-1:1);});
+  for(var i=0;i<GUESTMAX;i++)if(g[i].id===uid)return false;
+  var nm=visitNm;liveLeave();
+  (function back(){if(me.moving||me.jumping){setTimeout(back,120);return;}goHome();setStatus(nm+"の部屋はいっぱいだった。入れるのは、主と客5人まで。");})();
+  return true;
 }
 function liveProfiles(ids){
   run(sb.from("profiles").select("id,name,look,pet,room,joined_at").in("id",ids.slice(0,30))).then(function(r){
@@ -1139,6 +1169,38 @@ function liveJump(p){
   if(!p||typeof p!=="object"||typeof p.id!=="string")return;
   var o=live.others[p.id.toLowerCase()];if(!o)return;
   o.jt=performance.now();liveKick();
+}
+/* 吹き出し：話した一言を、6秒だけ頭の上に出す。どこにも残さない */
+var mySay=null,sayLast=-1e9;
+function cleanSay(v){return clip(v,SAYMAX,true);}
+function sayAgain(){setTimeout(function(){drawRoom();},SAYMS+50);}
+function liveHear(p){
+  if(!p||typeof p!=="object"||typeof p.id!=="string")return;
+  var o=live.others[p.id.toLowerCase()],t=cleanSay(p.t);
+  if(!o||!t)return;
+  o.say={t:t,until:performance.now()+SAYMS};drawRoom();sayAgain();
+}
+function speak(){
+  var inp=el("say-in"),t=cleanSay(inp.value);
+  if(!t||phase!=="in")return;
+  var now=performance.now();if(now-sayLast<1500){setStatus("少し間をおいて話す。");return;}
+  sayLast=now;inp.value="";
+  mySay={t:t,until:now+SAYMS};liveSend("say",{id:uid,t:t});drawRoom();sayAgain();
+}
+function bubble(t,X,Z,up){
+  var b=pr(X,Z,0),s0=T*b[2]/32,base=b[1]-up*s0;
+  rx.font='16px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="top";
+  var ch=Array.from(t),lines=[],per=10;for(var i=0;i<ch.length&&lines.length<3;i+=per)lines.push(ch.slice(i,i+per).join(""));
+  var w=0;lines.forEach(function(l){w=Math.max(w,rx.measureText(l).width);});
+  var h=lines.length*19+8,x0=Math.round(b[0]-w/2-6),y0=Math.round(base-h-6);
+  x0=Math.max(6,Math.min(W-w-18,x0));
+  /* ほかの吹き出しと重なるときは、その上に積む */
+  for(var n=0;n<8;n++){var hit=null;bubbles.forEach(function(r){if(x0<r[0]+r[2]&&x0+w+12>r[0]&&y0<r[1]+r[3]&&y0+h>r[1])hit=r;});if(!hit)break;y0=hit[1]-h-4;}
+  y0=Math.max(6,y0);bubbles.push([x0,y0,w+12,h]);
+  rx.fillStyle="#f4efe4";rx.fillRect(x0,y0,w+12,h);
+  rx.beginPath();rx.moveTo(b[0]-4,y0+h);rx.lineTo(b[0]+4,y0+h);rx.lineTo(b[0],y0+h+5);rx.closePath();rx.fill();
+  rx.strokeStyle="#1b1622";rx.lineWidth=1;rx.strokeRect(x0+0.5,y0+0.5,w+11,h-1);
+  rx.fillStyle="#1b1622";lines.forEach(function(l,i){rx.fillText(l,x0+6+w/2,y0+4+i*19);});
 }
 function liveSay(m,tail){
   var k=m&&typeof m.key==="string"?m.key.toLowerCase():"";
@@ -1180,12 +1242,15 @@ function nameTag(nm,X,Z,lift){
   rx.fillStyle="rgba(21,24,43,0.82)";rx.fillRect(b[0]-w/2-3,y-14,w+6,15);
   rx.fillStyle="#f4efe4";rx.fillText(nm,b[0],y);
 }
+var bubbles=[];
 function liveTags(){
-  var now=performance.now();
+  var now=performance.now();bubbles=[];
   for(var id in live.others){var o=live.others[id],k=Math.min(1,(now-o.t0)/STEP);
     var fx=o.from[0]+(o.x-o.from[0])*k,fy=o.from[1]+(o.y-o.from[1])*k,jk=(now-o.jt)/380;
     var lift=stackTop(Math.round(fy)*COLS+Math.round(fx))+(jk<1?Math.round(Math.sin(Math.PI*jk)*12):0);
-    nameTag(profiles[id]?profiles[id].name:"…",fx+0.5,fy+0.82,lift);}
+    nameTag(profiles[id]?profiles[id].name:"…",fx+0.5,fy+0.82,lift);
+    if(o.say&&o.say.until>now)bubble(o.say.t,fx+0.5,fy+0.82,44+lift);}
+  if(mySay&&mySay.until>now){var mz=stackTop(Math.round(me.fy)*COLS+Math.round(me.fx))+(me.jz||0);bubble(mySay.t,me.fx+0.5,me.fy+0.82,31+mz);}
 }
 
 var replying=false;
@@ -1513,6 +1578,8 @@ Object.keys(tabs).forEach(function(k){tabs[k].addEventListener("click",function(
 });
 el("go-jump").addEventListener("click",act);
 el("dress-back").addEventListener("click",function(){show("room");});
+el("say-go").addEventListener("click",speak);
+el("say-in").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.isComposing){e.preventDefault();speak();}});
 el("write-back").addEventListener("click",function(){show("room");});
 document.addEventListener("keydown",function(e){
   if(INROOM[mode]&&phase==="in"&&e.key==="Escape"){e.preventDefault();show("room");return;}
