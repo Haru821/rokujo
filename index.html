@@ -36,6 +36,11 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .controls{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .pad{display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:6px}
 .pad .btn,.acts .btn{padding:0;font-size:22px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+/* 矢印は押している間ずっと歩く。長押しで画面が動いたり、メニューが出たりしないようにする */
+.pad .btn{touch-action:none;-webkit-touch-callout:none}
+/* 部屋の上のスティック：指を置いた所に出る行灯の輪 */
+.stick{position:fixed;left:0;top:0;width:96px;height:96px;margin:-48px 0 0 -48px;border:2px solid var(--lamp);border-radius:50%;background:rgba(21,24,43,.35);pointer-events:none;z-index:20}
+.stick-knob{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:var(--lamp);opacity:.85}
 .acts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:136px}
 .acts .btn{min-height:48px;font-size:15px}
 .acts #go-jump{grid-column:1/3;min-height:64px;font-size:18px}
@@ -158,6 +163,7 @@ a.btn{display:block;text-decoration:none;text-align:center}
 
   <section id="view-room" hidden>
     <canvas id="room" width="1120" height="720" aria-label="六畳の部屋"></canvas>
+    <div class="stick" id="stick" hidden><span class="stick-knob" id="stick-knob"></span></div>
     <div class="controls">
       <div class="pad" aria-label="歩く操作">
         <span></span><button class="btn" id="go-u" aria-label="上へ1歩">↑</button><span></span>
@@ -513,7 +519,7 @@ function jump(){
 }
 function jumpTick(now){
   var k=(now-me.t0)/380;
-  if(k>=1){me.jumping=false;me.jz=0;drawRoom();return;}
+  if(k>=1){me.jumping=false;me.jz=0;drawRoom();if(hold.dir)holdGo();return;}
   me.jz=Math.round(Math.sin(Math.PI*k)*12);drawRoom();requestAnimationFrame(jumpTick);
 }
 function walkTo(tx,ty){
@@ -529,28 +535,56 @@ function tick(now){
   var seg=me.path[0],k=(now-me.t0)/(me.hop?STEP*1.6:STEP);
   me.dir=[seg[0]-me.from[0],seg[1]-me.from[1]];
   if(k>=1){me.x=me.fx=seg[0];me.y=me.fy=seg[1];me.path.shift();me.from=[me.x,me.y];me.t0=now;me.k=0;
-    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();return;}
+    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();if(hold.dir)holdGo();return;}
     me.dir=[me.path[0][0]-me.x,me.path[0][1]-me.y];liveMe(me.path[0][0],me.path[0][1]);
     petFollow([me.x,me.y]);
   }else{me.k=k;me.fx=me.from[0]+(seg[0]-me.from[0])*k;me.fy=me.from[1]+(seg[1]-me.from[1])*k;}
   drawRoom();requestAnimationFrame(tick);
 }
 
-/* なぞって歩く（指とペン）：なぞった向きへ1マス。短く触れただけなら、下のタップで歩く */
-var SWIPE=24,swipe=null,swiped=false;
+/* 押し続けて歩く：向きを持っている間、1マス歩き終えるたびに次の1マスへ進む。
+   家具の前では、向いて少し止まってから、低ければ跳び乗って進む。壁や高い家具の前では止まったまま待つ */
+var HOLDWAIT=300,hold={dir:null,t:0};
+function holdGo(){
+  clearTimeout(hold.t);hold.t=0;
+  if(!hold.dir)return;
+  if(mode!=="room"||phase!=="in"){hold.dir=null;return;}
+  if(me.moving||me.jumping)return; /* 歩き終えたところで tick から呼ばれる */
+  var x=me.x,y=me.y;step(hold.dir[0],hold.dir[1]);
+  /* 動きの少ない設定では一瞬で着くので、ここで間を置く。進めなかったときも少し待ってから試す */
+  if(!me.moving)hold.t=setTimeout(holdGo,(me.x!==x||me.y!==y)?STEP:HOLDWAIT);
+}
+function holdSet(d){
+  if(d&&hold.dir&&hold.dir[0]===d[0]&&hold.dir[1]===d[1])return;
+  hold.dir=d;if(d)holdGo();else{clearTimeout(hold.t);hold.t=0;}
+}
+window.addEventListener("blur",function(){holdSet(null);stickEnd();});
+document.addEventListener("visibilitychange",function(){if(document.hidden){holdSet(null);stickEnd();}});
+
+/* 部屋の上のスティック（指とペン）：置いた所から 20px 以上ずらすと、その向きへ歩き続ける。
+   指を戻すと止まり、離すと消える。ずらさずに離したときは、下のタップで歩く */
+var DEAD=20,REACH=28,stick=null,swiped=false,stickEl=el("stick"),knobEl=el("stick-knob");
+function stickEnd(){if(stick){stick=null;stickEl.hidden=true;holdSet(null);}}
 rc.addEventListener("pointerdown",function(e){
   swiped=false;
-  if(e.pointerType==="mouse"||!e.isPrimary){swipe=null;return;}
-  swipe={id:e.pointerId,x:e.clientX,y:e.clientY};
+  if(e.pointerType==="mouse"||!e.isPrimary){stickEnd();return;}
+  stick={id:e.pointerId,x:e.clientX,y:e.clientY,on:false};
+  try{rc.setPointerCapture(e.pointerId);}catch(_){}
 });
-rc.addEventListener("pointerup",function(e){
-  if(!swipe||swipe.id!==e.pointerId)return;
-  var dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;swipe=null;
-  if(Math.max(Math.abs(dx),Math.abs(dy))<SWIPE)return;
-  swiped=true;
-  if(Math.abs(dx)>Math.abs(dy))step(dx>0?1:-1,0);else step(0,dy>0?1:-1);
+rc.addEventListener("pointermove",function(e){
+  if(!stick||stick.id!==e.pointerId)return;
+  var dx=e.clientX-stick.x,dy=e.clientY-stick.y,far=Math.max(Math.abs(dx),Math.abs(dy));
+  if(!stick.on){
+    if(far<DEAD)return;
+    stick.on=true;swiped=true;
+    stickEl.style.left=stick.x+"px";stickEl.style.top=stick.y+"px";stickEl.hidden=false;
+  }
+  var len=Math.sqrt(dx*dx+dy*dy)||1,r=Math.min(len,REACH);
+  knobEl.style.transform="translate("+Math.round(dx/len*r)+"px,"+Math.round(dy/len*r)+"px)";
+  if(far<DEAD){holdSet(null);return;}
+  holdSet(Math.abs(dx)>Math.abs(dy)?[dx>0?1:-1,0]:[0,dy>0?1:-1]);
 });
-rc.addEventListener("pointercancel",function(){swipe=null;});
+["pointerup","pointercancel"].forEach(function(n){rc.addEventListener(n,function(e){if(stick&&stick.id===e.pointerId)stickEnd();});});
 rc.addEventListener("click",function(e){
   if(swiped){swiped=false;return;}
   var r=rc.getBoundingClientRect();
@@ -569,7 +603,7 @@ rc.addEventListener("click",function(e){
 var inv=document.getElementById("inv"),statusEl=document.getElementById("status"),discard=document.getElementById("discard"),baseEl=document.getElementById("base"),bagEl=document.getElementById("bag"),bagBtn=document.getElementById("bag-btn");
 function setStatus(t){statusEl.textContent=t;}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
-function hint(){setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳をなぞる。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。");}
+function hint(){setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。");}
 function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
 function inRoom(p){return p[0]>=0&&p[0]<COLS&&p[1]>=0&&p[1]<ROWS;}
 function itemButton(it,fn){
@@ -1530,8 +1564,18 @@ function show(v){
   else if(mode==="admin"){drawAdmin();loadAdmin();}
 }
 Object.keys(tabs).forEach(function(k){tabs[k].addEventListener("click",function(){show(k);refresh();});});
+/* 矢印のボタン：押している間は歩き続ける。キーボードで押したとき（click だけが来る）は1歩 */
 [["go-u",0,-1],["go-d",0,1],["go-l",-1,0],["go-r",1,0]].forEach(function(b){
-  el(b[0]).addEventListener("click",function(){step(b[1],b[2]);});});
+  var bt=el(b[0]),held=false;
+  bt.addEventListener("pointerdown",function(e){
+    if(!e.isPrimary||(e.pointerType==="mouse"&&e.button!==0))return;
+    held=true;try{bt.setPointerCapture(e.pointerId);}catch(_){}holdSet([b[1],b[2]]);
+  });
+  /* 離したあとには click が来るので held はそこで戻す。取り消されたときは click が来ないので、ここで戻す */
+  ["pointerup","pointercancel","lostpointercapture"].forEach(function(n){bt.addEventListener(n,function(e){if(held){holdSet(null);if(e.type==="pointercancel")held=false;}});});
+  bt.addEventListener("click",function(){if(held){held=false;return;}step(b[1],b[2]);});
+  bt.addEventListener("contextmenu",function(e){e.preventDefault();});
+});
 el("go-jump").addEventListener("click",act);
 el("dress-back").addEventListener("click",function(){show("room");});
 el("say-go").addEventListener("click",speak);
