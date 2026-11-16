@@ -450,8 +450,9 @@ function drawRoom(){
       var st=room[cy*COLS+cx],z=0;
       for(i=0;i<st.length;i++){var it=find(st[i]);if(!it)continue;if(!z&&i===0)shadow(cx+0.5,cy+0.82);stand(it.ck||it.id,it.px,cx+0.5,cy+0.82,z);z+=it.top||0;}
     }
-    if(host&&cy===host.y){shadow(host.x+0.5,host.y+0.82);stand(host.key,host.px,host.x+0.5,host.y+0.82,0);}
-    if(host&&host.pp&&cy===host.pp[1]){shadow(host.pp[0]+0.5,host.pp[1]+0.82);stand("__pet"+host.pet,PETPX[host.pet],host.pp[0]+0.5,host.pp[1]+0.82,0);}
+    if(hostShown()&&cy===host.y){shadow(host.x+0.5,host.y+0.82);stand(host.key,host.px,host.x+0.5,host.y+0.82,0);}
+    liveDraw(cy);
+    if(hostShown()&&host.pp&&cy===host.pp[1]){shadow(host.pp[0]+0.5,host.pp[1]+0.82);stand("__pet"+host.pet,PETPX[host.pet],host.pp[0]+0.5,host.pp[1]+0.82,0);}
     if(cy===dr){
       var mz=stackTop(Math.round(me.fy)*COLS+Math.round(me.fx))+(me.jz||0);
       if(me.hop&&me.moving&&me.path.length){
@@ -463,13 +464,8 @@ function drawRoom(){
     }
     if(petKind&&cy===prow){shadow(pfx+0.5,pfy+0.82);stand("__pet"+petKind,PETPX[petKind],pfx+0.5,pfy+0.82,stackTop(Math.round(pfy)*COLS+Math.round(pfx)));}
   }
-  if(host){
-    var hb=pr(host.x+0.5,host.y+0.82,0),hs=T*hb[2]/32,hy=hb[1]-25*hs;
-    rx.font='11px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="bottom";
-    var hw=rx.measureText(host.name).width;
-    rx.fillStyle="rgba(21,24,43,0.82)";rx.fillRect(hb[0]-hw/2-3,hy-14,hw+6,15);
-    rx.fillStyle="#f4efe4";rx.fillText(host.name,hb[0],hy);
-  }
+  if(hostShown())nameTag(host.name,host.x+0.5,host.y+0.82);
+  liveTags();
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
   if(!me.moving&&!me.jumping)syncAct();
 }
@@ -491,15 +487,16 @@ function placeMe(){
 }
 function step(dx,dy){
   if(me.moving||me.jumping)return;
-  var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];
+  var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];if(turned)liveMe(me.x,me.y);
   var tx=me.x+dx,ty=me.y+dy;
   if(tx<0||tx>=COLS||ty<0||ty>=ROWS){drawRoom();if(actTarget()!=="write")setStatus("そっちは壁。");return;}
-  if(host&&host.x===tx&&host.y===ty){drawRoom();setStatus(host.name+"がいる。");return;}
+  if(hostShown()&&host.x===tx&&host.y===ty){drawRoom();setStatus(host.name+"がいる。");return;}
   var tst=room[ty*COLS+tx];
   if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus(actTarget()==="dress"?"衣装台の前に立った。橙のボタンで着替えられる。拾うこともできる。":"「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
   var d=stackTop(ty*COLS+tx)-stackTop(me.y*COLS+me.x);
   if(d>14){drawRoom();setStatus("高すぎて登れない。低い家具なら跳び乗れる。");return;}
-  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();return;}
+  liveMe(tx,ty);
+  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveTrack();return;}
   petFollow([me.x,me.y]);me.hop=d>4||d<-4;me.path=[[tx,ty]];me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();
   if(me.hop)setStatus(d>0?"跳び乗った。":"跳び降りた。");
   requestAnimationFrame(tick);
@@ -507,7 +504,7 @@ function step(dx,dy){
 function jump(){
   if(me.moving||me.jumping)return;
   if(reduce){setStatus("その場で跳んだ。");return;}
-  me.jumping=true;me.t0=performance.now();requestAnimationFrame(jumpTick);
+  me.jumping=true;me.t0=performance.now();liveSend("jp",{id:uid});requestAnimationFrame(jumpTick);
 }
 function jumpTick(now){
   var k=(now-me.t0)/380;
@@ -519,14 +516,16 @@ function walkTo(tx,ty){
   if(tx===me.x&&ty===me.y){setStatus("もうそこに立っている。");return;}
   if(!walkable(tx,ty)){setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
   var p=route(tx,ty);if(!p){setStatus("家具にふさがれて、そこまで歩けない。");return;}
-  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();return;}
+  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveMe(tx,ty);liveTrack();return;}
+  me.dir=[p[0][0]-me.x,p[0][1]-me.y];liveMe(p[0][0],p[0][1]);
   petFollow([me.x,me.y]);me.path=p;me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();requestAnimationFrame(tick);
 }
 function tick(now){
   var seg=me.path[0],k=(now-me.t0)/(me.hop?STEP*1.6:STEP);
   me.dir=[seg[0]-me.from[0],seg[1]-me.from[1]];
   if(k>=1){me.x=me.fx=seg[0];me.y=me.fy=seg[1];me.path.shift();me.from=[me.x,me.y];me.t0=now;me.k=0;
-    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();return;}
+    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();liveTrack();return;}
+    me.dir=[me.path[0][0]-me.x,me.path[0][1]-me.y];liveMe(me.path[0][0],me.path[0][1]);
     petFollow([me.x,me.y]);
   }else{me.k=k;me.fx=me.from[0]+(seg[0]-me.from[0])*k;me.fy=me.from[1]+(seg[1]-me.from[1])*k;}
   drawRoom();requestAnimationFrame(tick);
@@ -1020,7 +1019,7 @@ function visitRes(id){
   where="res";visitId=id;visitNm=r.name;visitCustom=[];host=null;
   room=r.room.map(function(c){return c.slice();});
   bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");
-  resetMe();placeHost(r);
+  resetMe();placeHost(r);liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent=r.name+"の部屋にいる";
   show("room");drawReplies();drawRoom();
   /* その人の自作の家具を読む */
@@ -1034,11 +1033,121 @@ function visitRes(id){
 }
 function goHome(){
   if(where==="mine"||me.moving||me.jumping)return;
-  room=home||emptyRoom();home=null;where="mine";visitId=null;visitNm="";visitCustom=[];host=null;resetMe();
+  room=home||emptyRoom();home=null;where="mine";visitId=null;visitNm="";visitCustom=[];host=null;resetMe();liveJoin();
   el("visit-bar").hidden=true;el("reply-panel").hidden=true;
   drawRoom();count();hint();
 }
 el("go-home").addEventListener("click",goHome);
+
+/* ---- 一緒にいる人：同じ部屋にいる住民の姿と歩く動きを、その場で見せる ----
+   通り道は「room:部屋の持ち主の id」。鍵付き（private）で、入場している住民だけが入れる。
+   流すのは位置と向きだけ。名前と見た目は、データベースの住民の表から読む。 */
+var live={ch:null,topic:"",others:Object.create(null),raf:0,since:0};
+function liveOwner(){return where==="mine"?uid:visitId;}
+function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<COLS&&y>=0&&y<ROWS;}
+function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
+function liveJoin(){
+  var owner=liveOwner();
+  if(!sb||phase!=="in"||!isUuid(owner)){liveLeave();return;}
+  var topic="room:"+owner.toLowerCase();
+  if(live.ch&&live.topic===topic)return;
+  liveLeave();
+  var ch;
+  try{ch=sb.channel(topic,{config:{private:true,presence:{key:uid},broadcast:{self:false}}});}catch(e){return;}
+  live.ch=ch;live.topic=topic;
+  ch.on("presence",{event:"sync"},function(){if(live.ch===ch)liveSync();})
+    .on("presence",{event:"join"},function(m){if(live.ch===ch)liveSay(m,"が来た。");})
+    .on("presence",{event:"leave"},function(m){if(live.ch===ch)liveSay(m,"が出ていった。");})
+    .on("broadcast",{event:"mv"},function(m){if(live.ch===ch)liveMove(m&&m.payload);})
+    .on("broadcast",{event:"jp"},function(m){if(live.ch===ch)liveJump(m&&m.payload);});
+  var go=function(){if(live.ch!==ch)return;try{ch.subscribe(function(st){if(live.ch===ch&&st==="SUBSCRIBED"){live.since=performance.now();liveTrack();}});}catch(e){}};
+  /* ログインの鍵を通り道にも渡してからつなぐ */
+  try{Promise.resolve(sb.realtime&&sb.realtime.setAuth?sb.realtime.setAuth():null).then(go,go);}catch(e){go();}
+}
+function liveLeave(){
+  var ch=live.ch;live.ch=null;live.topic="";live.others=Object.create(null);
+  if(ch){try{sb.removeChannel(ch);}catch(e){}}
+}
+function liveTrack(){if(live.ch){try{live.ch.track({x:me.x,y:me.y,dx:me.dir[0],dy:me.dir[1]});}catch(e){}}}
+function liveSend(ev,p){if(live.ch){try{live.ch.send({type:"broadcast",event:ev,payload:p});}catch(e){}}}
+function liveMe(x,y){liveSend("mv",{id:uid,x:x,y:y,dx:me.dir[0],dy:me.dir[1]});}
+function liveSync(){
+  var st;try{st=live.ch.presenceState();}catch(e){return;}
+  var next=Object.create(null),need=[],now=performance.now();
+  Object.keys(st||{}).slice(0,30).forEach(function(k){
+    if(!isUuid(k))return;var id=k.toLowerCase();if(id===uid||next[id])return;
+    var a=st[k],p=Array.isArray(a)&&a.length?a[a.length-1]:null;
+    var ok=p&&typeof p==="object"&&okCell(p.x,p.y),o=live.others[id];
+    if(!o){if(!ok)return;o={id:id,x:p.x,y:p.y,from:[p.x,p.y],t0:0,jt:0,dir:[0,1],px:null,key:""};}
+    else if(ok&&now-o.t0>STEP&&(o.x!==p.x||o.y!==p.y)){o.from=[o.x,o.y];o.x=p.x;o.y=p.y;o.t0=now;}
+    if(p&&okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
+    next[id]=o;if(!profiles[id])need.push(id);
+  });
+  live.others=next;
+  if(need.length)liveProfiles(need);
+  liveKick();
+}
+function liveProfiles(ids){
+  run(sb.from("profiles").select("id,name,look,pet,room,joined_at").in("id",ids.slice(0,30))).then(function(r){
+    if(r.error)return;
+    rows(r.data).forEach(function(d){var p=sanProfile(d);if(p&&!profiles[p.id])profiles[p.id]=p;});
+    Object.keys(live.others).forEach(function(id){live.others[id].px=null;});
+    drawRoom();
+  });
+}
+function liveMove(p){
+  if(!p||typeof p!=="object"||typeof p.id!=="string")return;
+  var o=live.others[p.id.toLowerCase()];
+  if(!o||!okCell(p.x,p.y))return;
+  /* 1度に動けるのは隣のマスまで。遠くへ跳んだ知らせは、その場所へ置き直す */
+  var far=Math.abs(p.x-o.x)+Math.abs(p.y-o.y)>1;
+  var now=performance.now(),k=Math.min(1,(now-o.t0)/STEP);
+  o.from=far?[p.x,p.y]:[o.from[0]+(o.x-o.from[0])*k,o.from[1]+(o.y-o.from[1])*k];
+  o.x=p.x;o.y=p.y;o.t0=now;
+  if(okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
+  liveKick();
+}
+function liveJump(p){
+  if(!p||typeof p!=="object"||typeof p.id!=="string")return;
+  var o=live.others[p.id.toLowerCase()];if(!o)return;
+  o.jt=performance.now();liveKick();
+}
+function liveSay(m,tail){
+  var k=m&&typeof m.key==="string"?m.key.toLowerCase():"";
+  if(!isUuid(k)||k===uid)return;
+  var nm=profiles[k]?profiles[k].name:"住民";
+  /* 入ったときに先にいた人は「来た」ではなく「いる」 */
+  if(tail==="が来た。"&&performance.now()-live.since<1500)tail="がいる。";
+  if(mode==="room"&&!me.moving)setStatus(nm+tail);
+}
+function liveBusy(){var now=performance.now();for(var id in live.others){var o=live.others[id];if(now-o.t0<STEP||now-o.jt<380)return true;}return false;}
+function liveKick(){if(live.raf)return;live.raf=requestAnimationFrame(function f(){live.raf=0;drawRoom();if(liveBusy())live.raf=requestAnimationFrame(f);});}
+/* 部屋の主がその場にいれば、止まった姿の代わりに本人を見せる */
+function hostShown(){return host&&!(visitId&&live.others[visitId]);}
+function liveDraw(cy){
+  var now=performance.now();
+  for(var id in live.others){var o=live.others[id],k=Math.min(1,(now-o.t0)/STEP);
+    var row=k<1?Math.max(Math.round(o.from[1]),o.y):o.y;if(row!==cy)continue;
+    var fx=o.from[0]+(o.x-o.from[0])*k,fy=o.from[1]+(o.y-o.from[1])*k,jk=(now-o.jt)/380,jz=jk<1?Math.round(Math.sin(Math.PI*jk)*12):0;
+    var pr0=profiles[id];
+    if(!o.px||o.known!==!!pr0){var L=pr0?pr0.look:sanLook(null);o.known=!!pr0;o.px=makeChar(L);o.key="__h"+L.hair+"-"+L.hc+"-"+L.k+"-"+L.o;}
+    var bob=(k<1&&Math.floor(now/120)%2)?1:0;
+    shadow(fx+0.5,fy+0.82);stand(o.key,o.px,fx+0.5,fy+0.82,stackTop(Math.round(fy)*COLS+Math.round(fx))+jz+bob);
+  }
+}
+function nameTag(nm,X,Z){
+  var b=pr(X,Z,0),s0=T*b[2]/32,y=b[1]-25*s0;
+  rx.font='11px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="bottom";
+  var w=rx.measureText(nm).width;
+  rx.fillStyle="rgba(21,24,43,0.82)";rx.fillRect(b[0]-w/2-3,y-14,w+6,15);
+  rx.fillStyle="#f4efe4";rx.fillText(nm,b[0],y);
+}
+function liveTags(){
+  var now=performance.now();
+  for(var id in live.others){var o=live.others[id],k=Math.min(1,(now-o.t0)/STEP);
+    nameTag(profiles[id]?profiles[id].name:"…",o.from[0]+(o.x-o.from[0])*k+0.5,o.from[1]+(o.y-o.from[1])*k+0.82);}
+}
+
 var replying=false;
 function drawReplies(){
   var panel=el("reply-panel");
@@ -1374,7 +1483,7 @@ function drawAll(){
 /* ---- 入口：ログイン → 招待コード → 住民名 → 世界 ---- */
 var seq=0,authSeen=false;
 function resetWorld(){
-  clearTimeout(saveT);dirty=false;isAdmin=false;myName="";profiles=Object.create(null);strips=[];replies=[];letters=[];tea=null;custom=[];
+  liveLeave();clearTimeout(saveT);dirty=false;isAdmin=false;myName="";profiles=Object.create(null);strips=[];replies=[];letters=[];tea=null;custom=[];
   where="mine";home=null;visitId=null;visitNm="";visitCustom=[];host=null;room=emptyRoom();mode="room";
   ad={members:[],invites:[],reports:[],open:null,furn:null,busy:false,filled:false,lastCode:""};
   el("visit-bar").hidden=true;el("reply-panel").hidden=true;note("");
@@ -1419,7 +1528,7 @@ function enter(p){
   myName=p.name;look=p.look;petKind=p.pet;room=p.room;profiles[uid]=p;
   phase="in";where="mine";home=null;host=null;CHAR=makeChar(look);
   me.x=me.fx=2;me.y=me.fy=4;me.dir=[0,1];placeMe();placePet();
-  drawAll();show("room");drawRoom();refresh();
+  drawAll();show("room");drawRoom();refresh();liveJoin();
 }
 el("retry").addEventListener("click",function(){if(uid&&phase==="error")checkEntry();});
 var signing=false;
