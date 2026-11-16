@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>六畳の部屋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Yuji+Syuku&display=swap" rel="stylesheet">
+<!-- supabase-js は版を固定して読む。読めなかったときは、下のスクリプトが説明の画面を出す -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
+<style>
+:root{
+  /* 夜の六畳。暗い藍の中に、行灯の橙がひとつだけ灯る。部屋の絵が主役で、周りは静かに。 */
+  color-scheme: dark;
+  --night:#15182b;
+  --panel:#20244a;
+  --line:#3a4072;
+  --ink:#f1e9d6;
+  --mute:#a7a5c2;
+  --lamp:#f0a23c;
+  --font:"DotGothic16","Hiragino Kaku Gothic ProN","Yu Gothic",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6}
+.wrap{max-width:560px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:26px;font-weight:400;letter-spacing:.12em}
+.note{margin:0;color:var(--mute);font-size:13px}
+.tabs{display:flex;gap:4px}
+.tab{flex:1;min-width:0;padding:10px 0;background:transparent;color:var(--mute);border:2px solid var(--line);font:inherit;font-size:14px;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--night);background:var(--lamp);border-color:var(--lamp)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+#room{width:100%;height:auto;image-rendering:auto;cursor:pointer;touch-action:manipulation}
+.controls{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pad{display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:6px}
+.pad .btn,.acts .btn{padding:0;font-size:22px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.acts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:136px}
+.acts .btn{min-height:48px;font-size:15px}
+.acts #go-jump{grid-column:1/3;min-height:64px;font-size:18px}
+.status{margin:0;min-height:3.2em;padding:8px 12px;background:var(--panel);border-left:4px solid var(--lamp);font-size:15px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h2{margin:0;font-size:16px;font-weight:400;color:var(--mute);letter-spacing:.08em}
+.count{color:var(--mute);font-size:13px}
+.inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 6px;background:var(--panel);border:2px solid var(--line);color:var(--ink);font:inherit;font-size:13px;cursor:pointer;overflow-wrap:anywhere;text-align:center;line-height:1.3}
+.item canvas{width:48px;height:48px}
+.item[aria-pressed="true"]{border-color:var(--lamp);background:#2c2f5c}
+.item .mine{color:var(--lamp);font-size:11px}
+.tool-glyph{width:48px;height:48px;display:grid;place-items:center;font-size:24px;color:var(--mute)}
+.btn{padding:10px 14px;background:transparent;color:var(--ink);border:2px solid var(--line);font:inherit;cursor:pointer}
+.btn.primary{background:var(--lamp);border-color:var(--lamp);color:var(--night)}
+.btn.small{padding:6px 10px;font-size:13px}
+.btn[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
+#editor{width:100%;max-width:440px;height:auto;border:4px solid #0c0e1c;touch-action:none;cursor:crosshair;align-self:center}
+.pal{display:grid;grid-template-columns:repeat(9,1fr);gap:6px}
+.sw{aspect-ratio:1;border:2px solid var(--line);cursor:pointer;padding:0;min-width:0}
+.sw[aria-pressed="true"]{border-color:var(--ink);outline:2px solid var(--lamp)}
+.sw.erase{background:repeating-conic-gradient(#3a3f66 0 25%,#262a4d 0 50%) 0 0/12px 12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input[type=text]{padding:10px 12px;background:var(--panel);color:var(--ink);border:2px solid var(--line);font:inherit;width:100%}
+.field input[type=file]{color:var(--mute);font:inherit;font-size:13px;max-width:100%}
+.field input[type=range]{width:100%;accent-color:var(--lamp)}
+.hint{color:var(--mute);font-size:13px;margin:0}
+.preview{display:flex;align-items:center;gap:12px;color:var(--mute);font-size:13px}
+.preview canvas{width:64px;height:64px;background:var(--panel);border:2px solid #0c0e1c}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+section,.block{display:flex;flex-direction:column;gap:14px}
+.brush{font-family:"Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif}
+textarea.write,input.write{width:100%;padding:12px;background:#f4efe4;color:#1b1622;border:2px solid var(--line);font-size:20px;line-height:1.6;resize:vertical}
+.field input[type=text].write{background:#f4efe4;color:#1b1622;font-family:"Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif;font-size:20px}
+.tl{display:flex;flex-direction:row-reverse;gap:10px;overflow-x:auto;padding:6px 2px 14px}
+.strip{flex:0 0 auto;position:relative;writing-mode:vertical-rl;height:330px;min-width:58px;background:#f4efe4;color:#1b1622;padding:26px 10px 34px;font-size:21px;line-height:1.75;border-top:5px solid var(--lamp);white-space:pre-wrap;overflow-wrap:anywhere}
+.strip::before{content:"";position:absolute;top:8px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:var(--night)}
+.meta{font-family:var(--font);font-size:11px;color:#8a8578;line-height:1.4}
+.tear{position:absolute;left:4px;bottom:4px;writing-mode:horizontal-tb;padding:2px 6px;background:transparent;border:1px solid #c9c2b0;color:#8a8578;font:inherit;font-family:var(--font);font-size:11px;cursor:pointer}
+.paper{position:relative;writing-mode:vertical-rl;height:340px;overflow-x:auto;background:#f4efe4 repeating-linear-gradient(to left,transparent 0 35px,#e2d9c4 35px 36px);color:#1b1622;padding:18px 18px 34px;font-size:20px;line-height:36px;white-space:pre-wrap;overflow-wrap:anywhere}
+.paper .to{font-size:22px}
+.thread{background:var(--panel);padding:12px;display:flex;flex-direction:column;gap:10px}
+.quote{background:#f4efe4;color:#1b1622;padding:10px 12px;font-size:20px;line-height:1.6}
+.reply{border-left:3px solid var(--lamp);padding-left:10px;font-size:18px;line-height:1.6}
+#look-pv{width:68px;height:68px;background:#b9b27a;border:2px solid #0c0e1c}
+.field input[type=email],.field textarea.plain,.field select{padding:10px 12px;background:var(--panel);color:var(--ink);border:2px solid var(--line);font:inherit;width:100%}
+.person{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--panel);border:2px solid var(--line);flex-wrap:wrap}
+.person .nm{overflow-wrap:anywhere;min-width:0;flex:1}
+.person.wide .nm{flex:1 0 100%}
+.warn{margin:0;padding:8px 12px;border:2px solid var(--lamp);font-size:14px}
+a.btn{display:block;text-decoration:none;text-align:center}
+.sub{display:flex;flex-direction:column;gap:8px;padding:4px 0 4px 10px;border-left:3px solid var(--line);width:100%}
+.line{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:14px}
+.line span{overflow-wrap:anywhere;min-width:0;flex:1}
+.line .count{flex:0 0 auto}
+.fee{margin:0;padding:12px;background:#f4efe4;color:#1b1622;white-space:pre-wrap;overflow-wrap:anywhere}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
+.codebox{padding:12px;background:#f4efe4;color:#1b1622;font-size:18px;text-align:center}
+.quiet{align-self:flex-start;padding:4px 0;background:transparent;border:0;color:var(--mute);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
+.btn:disabled,.tear:disabled{opacity:.5}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>六畳の部屋</h1>
+    <p class="note"><span id="tea"></span></p>
+  </header>
+
+  <p class="status" id="notice" aria-live="polite" hidden></p>
+
+  <div class="block" id="lobby">
+    <p class="status" id="lobby-msg" aria-live="polite">読み込み中…</p>
+    <div class="block" id="signin-form" hidden>
+      <div class="field">
+        <label for="mail-in">メールアドレス</label>
+        <input id="mail-in" type="email" maxlength="254" autocomplete="email" inputmode="email">
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="signin-go">入るためのリンクを送る</button>
+        <button class="btn" id="google-go" hidden>Googleで入る</button>
+      </div>
+      <p class="hint">パスワードはいらない。メールに届いたリンクを開くと入れる。</p>
+    </div>
+    <div class="block" id="invite-form" hidden>
+      <p class="fee" id="invite-fee"></p>
+      <a class="btn" id="invite-pay" target="_blank" rel="noopener noreferrer" hidden>支払いのページを開く</a>
+      <div class="field">
+        <label for="invite-in">招待コード</label>
+        <input id="invite-in" type="text" maxlength="60" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      </div>
+      <div class="actions"><button class="btn primary" id="invite-go">招待コードで入る</button></div>
+      <a class="btn small" id="invite-report" target="_blank" rel="noopener noreferrer" hidden>困ったことを管理人に知らせる</a>
+    </div>
+    <div class="block" id="name-form" hidden>
+      <div class="field">
+        <label for="name-in">住民名（12字まで）</label>
+        <input id="name-in" type="text" maxlength="12" autocomplete="off" placeholder="部屋の表札に出る名前">
+      </div>
+      <div class="actions"><button class="btn primary" id="name-go">部屋に入る</button></div>
+      <p class="hint">住民名と部屋と短冊は、ほかの住民にも見える。</p>
+    </div>
+    <div class="actions"><button class="btn" id="retry" hidden>もう一度確かめる</button></div>
+  </div>
+
+  <div class="tabs" id="tabs" role="tablist" hidden>
+    <button class="tab" id="tab-room" role="tab" aria-selected="true">部屋</button>
+    <button class="tab" id="tab-post" role="tab" aria-selected="false">短冊</button>
+    <button class="tab" id="tab-letter" role="tab" aria-selected="false">手紙</button>
+    <button class="tab" id="tab-people" role="tab" aria-selected="false">住民</button>
+    <button class="tab" id="tab-make" role="tab" aria-selected="false">つくる</button>
+    <button class="tab" id="tab-admin" role="tab" aria-selected="false" hidden>管理</button>
+  </div>
+
+  <section id="view-room" hidden>
+    <canvas id="room" width="1120" height="720" aria-label="六畳の部屋"></canvas>
+    <div class="controls">
+      <div class="pad" aria-label="歩く操作">
+        <span></span><button class="btn" id="go-u" aria-label="上へ1歩">↑</button><span></span>
+        <button class="btn" id="go-l" aria-label="左へ1歩">←</button><span></span><button class="btn" id="go-r" aria-label="右へ1歩">→</button>
+        <span></span><button class="btn" id="go-d" aria-label="下へ1歩">↓</button><span></span>
+      </div>
+      <div class="acts">
+        <button class="btn primary" id="go-jump">跳ぶ</button>
+        <button class="btn" id="bag-btn" aria-pressed="false">荷物</button>
+        <button class="btn" id="pick-btn">拾う</button>
+      </div>
+    </div>
+    <div class="row" id="visit-bar" hidden>
+      <span id="visit-name"></span>
+      <button class="btn small" id="go-home">自分の部屋へ帰る</button>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="block" id="bag" hidden>
+      <div class="row">
+        <h2>荷物</h2>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="inv" id="inv"></div>
+      <div class="actions">
+        <button class="btn small" id="clear-room">部屋の物を全部しまう</button>
+      </div>
+    </div>
+    <div class="block" id="dresser" hidden>
+      <div class="row"><h2>衣装台</h2><canvas id="look-pv" width="34" height="34"></canvas></div>
+      <div class="field"><span>髪型</span><div class="actions" id="opt-hair"></div></div>
+      <div class="field"><span>髪の色</span><div class="pal" id="opt-hc"></div></div>
+      <div class="field"><span>着物の色</span><div class="pal" id="opt-k"></div></div>
+      <div class="field"><span>帯の色</span><div class="pal" id="opt-o"></div></div>
+      <div class="field"><span>連れて歩く</span><div class="actions" id="opt-pet"></div></div>
+    </div>
+    <div class="block" id="reply-panel" hidden></div>
+  </section>
+
+  <section id="view-post" hidden>
+    <div class="field">
+      <label for="post-in">短冊に書く（80字まで）</label>
+      <textarea id="post-in" class="brush write" maxlength="80" rows="3" placeholder="いま思ったことを一言"></textarea>
+    </div>
+    <div class="row">
+      <span class="count" id="post-left"></span>
+      <button class="btn primary" id="post-go">短冊を吊るす</button>
+    </div>
+    <p class="status" id="post-status" aria-live="polite">吊るした短冊は、右から新しい順に並ぶ。</p>
+    <h2>みんなの短冊</h2>
+    <div class="tl" id="tl"></div>
+    <p class="hint" id="tl-hint"></p>
+    <div class="block" id="my-replies"></div>
+  </section>
+
+  <section id="view-letter" hidden>
+    <p class="warn">読めるのは、出した人と受け取った人だけ。</p>
+    <div class="field">
+      <label for="let-to">宛先の住民</label>
+      <select id="let-to"></select>
+    </div>
+    <div class="field">
+      <label for="let-in">手紙（400字まで）</label>
+      <textarea id="let-in" class="brush write" maxlength="400" rows="6" placeholder="拝啓"></textarea>
+    </div>
+    <div class="row">
+      <span class="count" id="let-left"></span>
+      <button class="btn primary" id="let-go">封をして出す</button>
+    </div>
+    <p class="status" id="let-status" aria-live="polite"></p>
+    <h2>文箱</h2>
+    <div class="block" id="letters"></div>
+  </section>
+
+  <section id="view-people" hidden>
+    <h2>住民</h2>
+    <div class="block" id="people"></div>
+  </section>
+
+  <section id="view-make" hidden>
+    <canvas id="editor" width="384" height="384" aria-label="32かける32マスのドット絵。なぞって描く"></canvas>
+    <div class="actions">
+      <button class="btn small" id="t-pen" aria-pressed="true">細ペン</button>
+      <button class="btn small" id="t-fat" aria-pressed="false">太ペン</button>
+      <button class="btn small" id="t-fill" aria-pressed="false">塗りつぶし</button>
+      <button class="btn small" id="undo">ひとつ戻す</button>
+    </div>
+    <div class="pal" id="pal"></div>
+    <div class="field">
+      <label for="imgin">画像を読み込んでドット絵にする</label>
+      <input id="imgin" type="file" accept="image/*">
+    </div>
+    <p class="hint">下の明るい部分が畳1マス分の床。その上に立つように描くと部屋になじむ。</p>
+    <div class="field">
+      <label for="ftop">上に物を置く高さ <span id="ftop-v"></span>（橙の線に物が乗る）</label>
+      <input id="ftop" type="range" min="0" max="28" step="1" value="10">
+    </div>
+    <div class="preview"><canvas id="pv" width="32" height="32"></canvas><span>畳に置いたときの見え方</span></div>
+    <div class="field">
+      <label for="fname">家具の名前</label>
+      <input id="fname" type="text" maxlength="10" placeholder="例：青い椅子" autocomplete="off">
+    </div>
+    <p class="status" id="make-status" aria-live="polite">色を選んで、マスをなぞって描く。</p>
+    <div class="actions">
+      <button class="btn primary" id="save">家具にする</button>
+      <button class="btn" id="wipe">白紙に戻す</button>
+    </div>
+    <h2>今ある家具を元にして描く</h2>
+    <div class="inv" id="base"></div>
+    <div class="actions">
+      <button class="btn small" id="discard" hidden>元にした自作の家具を捨てる</button>
+    </div>
+  </section>
+
+  <section id="view-admin" hidden>
+    <p class="status" id="ad-status" aria-live="polite">招待・住民・設定・通報を扱う。</p>
+    <h2>招待コード</h2>
+    <div class="actions"><button class="btn primary" id="ad-new">招待コードを作る</button></div>
+    <div class="block" id="ad-code-box" hidden>
+      <div class="codebox code" id="ad-code"></div>
+      <div class="actions"><button class="btn small" id="ad-copy">このコードを写す</button></div>
+    </div>
+    <div class="block" id="ad-invites"></div>
+    <h2>住民と入場</h2>
+    <div class="block" id="ad-list"></div>
+    <h2>通報</h2>
+    <div class="block" id="ad-reports"></div>
+    <h2>設定</h2>
+    <div class="field">
+      <label for="ad-url">支払いページのURL（https:// で始める）</label>
+      <input id="ad-url" type="text" maxlength="300" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="ad-fee">料金の説明（400字まで）</label>
+      <textarea id="ad-fee" class="plain" maxlength="400" rows="3"></textarea>
+    </div>
+    <div class="field">
+      <label for="ad-report">外の連絡先（https:// か mailto: で始める。なくてもよい）</label>
+      <input id="ad-report" type="text" maxlength="300" autocomplete="off">
+    </div>
+    <div class="actions"><button class="btn primary" id="ad-save">設定を保存</button></div>
+  </section>
+
+  <div class="block" id="foot" hidden>
+    <p class="hint">部屋・家具・短冊・返事は、ほかの住民にも見える。手紙は、出した人と受け取った人だけ。</p>
+    <div class="actions"><button class="btn small" id="report-open">困ったことを管理人に知らせる</button></div>
+    <div class="block" id="report-panel" hidden>
+      <p class="hint" id="report-target"></p>
+      <div class="field">
+        <label for="report-in">知らせること（400字まで）</label>
+        <textarea id="report-in" class="plain" maxlength="400" rows="4"></textarea>
+      </div>
+      <div class="actions"><button class="btn primary" id="report-go">管理人に送る</button></div>
+      <p class="status" id="report-status" aria-live="polite"></p>
+      <a class="btn small" id="report-link" target="_blank" rel="noopener noreferrer" hidden>外の連絡先を開く</a>
+    </div>
+  </div>
+  <button class="quiet" id="logout" hidden>ログアウト</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---- 設定（どれも公開してよい値。秘密の鍵はここに書かない） ---- */
+var ENABLE_GOOGLE=false; /* Googleで入る設定が済んだら true にする */
+var SB_URL="https://cgmkpmqjsevbgieaytjs.supabase.co";
+var SB_KEY="sb_publishable_b1g06xSXWneSoomzwn9nkg_hB2OtQQB";
+var PAL=[null,"#1b1622","#f4efe4","#8a8578","#5a3a22","#9a6a3a","#d9a866","#c2452d","#e8943a","#f1cf5a","#5f8f4e","#2f5d43","#4f7fb5","#2b3a67","#c98aa6","#7a5a9a","#e9dcc0"];
+var COLS=8,ROWS=6,N=32,W=560,H=360,MAXSTACK=2;
+
+/* 32x32の絵。下の24行が畳1マス分。手前から少し見下ろした向き */
+function art(fn){
+  var g=new Array(N*N).fill(0);
+  function R(x,y,w,h,c){for(var j=y;j<y+h;j++)for(var i=x;i<x+w;i++)if(i>=0&&i<N&&j>=0&&j<N)g[j*N+i]=c;}
+  fn(R,function(x,y,c){R(x,y,1,1,c);});return g;
+}
+var PRESETS=[
+  {id:"p-chabudai",name:"ちゃぶ台",top:13,px:art(function(R){R(5,22,2,8,4);R(25,22,2,8,4);R(3,12,26,9,6);R(4,13,24,1,16);R(3,21,26,2,5);})},
+  {id:"p-zabuton",name:"座布団",top:4,px:art(function(R){R(5,16,22,10,12);R(5,26,22,3,13);R(15,20,2,2,2);})},
+  {id:"p-hondana",name:"本棚",top:26,px:art(function(R){R(4,4,24,26,4);R(4,1,24,3,5);R(6,6,20,6,1);R(6,14,20,6,1);R(6,22,20,6,1);
+    var c=[7,12,9,10,14,2,15,8,12,7];for(var i=0;i<10;i++){R(6+i*2,7,2,5,c[i]);R(6+i*2,15,2,5,c[(i+3)%10]);if(i<7)R(6+i*2,23,2,5,c[(i+6)%10]);}})},
+  {id:"p-andon",name:"行灯",top:21,px:art(function(R){R(11,27,10,3,4);R(12,10,8,17,9);R(14,13,4,11,8);R(12,10,8,1,4);R(12,26,8,1,4);R(12,10,1,17,4);R(19,10,1,17,4);R(12,8,8,2,4);})},
+  {id:"p-hachiue",name:"鉢植え",top:10,px:art(function(R,P){R(15,17,2,3,11);R(11,6,10,11,10);R(8,10,4,6,11);R(20,9,4,6,11);R(14,3,4,3,10);P(13,9,11);P(17,12,11);R(10,20,12,2,7);R(12,20,8,1,4);R(11,22,10,8,7);R(11,29,10,1,4);})},
+  {id:"p-neko",name:"黒猫",top:19,px:art(function(R,P){R(10,22,12,8,1);R(11,13,10,9,1);R(11,11,2,2,1);R(19,11,2,2,1);R(13,16,2,2,9);R(17,16,2,2,9);P(15,19,14);P(16,19,14);R(22,24,2,6,1);R(24,22,2,3,1);})},
+  {id:"p-futon",name:"布団",top:4,px:art(function(R){R(3,10,26,18,12);R(3,10,26,6,2);R(10,11,12,4,16);R(3,16,26,2,2);R(3,28,26,2,13);})},
+  {id:"p-yunomi",name:"湯のみ",top:8,px:art(function(R,P){R(13,24,6,6,11);R(13,22,6,2,10);R(14,22,4,1,11);P(15,19,2);P(16,17,2);P(15,15,2);})},
+  {id:"p-ishoudai",name:"衣装台",top:17,px:art(function(R,P){R(10,1,12,13,4);R(11,2,10,11,12);R(12,3,3,1,2);R(12,4,1,2,2);R(17,8,3,1,2);R(6,13,20,3,6);R(6,16,20,14,5);R(6,22,20,1,4);R(6,29,20,1,4);R(15,18,2,2,9);R(15,25,2,2,9);})}
+];
+/* 見た目：髪型・髪の色・着物・帯を組み合わせて人の絵を作る */
+var HAIRS=["短髪","長髪","お団子"],HCS=[1,4,3,7],KS=[13,12,11,10,7,15,14,2],OS=[7,9,8,2,1,10];
+var look={hair:0,hc:1,k:13,o:7};
+function makeChar(L){return art(function(R,P){var h=L.hc,k=L.k;
+  R(13,9,6,2,h);R(12,10,1,3,h);R(19,10,1,3,h);
+  if(L.hair===2){R(15,6,2,2,h);R(14,8,4,1,h);}
+  R(13,11,6,5,16);P(14,13,1);P(17,13,1);
+  R(12,16,8,9,k);R(11,17,1,6,k);R(20,17,1,6,k);R(12,21,8,1,L.o);
+  if(L.hair===1){R(13,8,6,1,h);R(12,10,1,9,h);R(19,10,1,9,h);}
+  R(13,25,2,4,16);R(17,25,2,4,16);R(13,29,2,1,1);R(17,29,2,1,1);});}
+function lookKey(){return "__me"+look.hair+"-"+look.hc+"-"+look.k+"-"+look.o;}
+var CHAR=makeChar(look);
+/* 連れ歩く猫 */
+var PETC=[0,1,2,5],PETN=["なし","黒猫","白猫","茶トラ"],petKind=1;
+function makePet(c){return art(function(R,P){var e=c===1?9:1;R(11,22,10,6,c);R(9,17,7,7,c);P(9,16,c);P(10,15,c);P(15,16,c);P(14,15,c);P(11,20,e);P(14,20,e);R(21,18,2,6,c);R(22,16,2,3,c);R(12,28,2,2,c);R(18,28,2,2,c);});}
+var PETPX=PETC.map(function(c){return c?makePet(c):null;}),pet={x:1,y:4,from:[1,4],t0:0};
+var START=[[5,0,"p-ishoudai"],[1,0,"p-hondana"],[7,0,"p-andon"],[4,3,"p-chabudai"],[4,3,"p-yunomi"],[3,3,"p-zabuton"],[5,3,"p-zabuton"],[6,4,"p-zabuton"],[6,4,"p-neko"],[0,5,"p-hachiue"],[1,2,"p-futon"]];
+
+var custom=[],room=[],mode="room",bagOpen=false,lastBase=null,where="mine",home=null;
+/* where は "mine"（自分の部屋）か "res"（住民を訪問中）。phase は boot / nolib / error / signin / invite / naming / in */
+var phase="boot",uid=null,myName="",visitId=null,visitNm="",visitCustom=[],host=null;
+var me={x:2,y:4,fx:2,fy:4,path:[],from:[2,4],t0:0,k:0,jz:0,dir:[0,1],moving:false,jumping:false,hop:false},STEP=170;
+var reduce=false;try{reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){}
+
+function emptyRoom(){var a=[];for(var i=0;i<COLS*ROWS;i++)a.push([]);return a;}
+function myRoomRef(){return where==="mine"?room:(home||room);}
+function myItems(){return PRESETS.concat(custom);}
+function items(){return PRESETS.concat(where==="res"?visitCustom:custom);}
+function find(id){var a=items();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
+function paint(ctx,px,ox,oy){
+  for(var i=0;i<N*N;i++){var c=px[i];if(!c)continue;ctx.fillStyle=PAL[c];ctx.fillRect(ox+(i%N),oy+Math.floor(i/N),1,1);}
+}
+function stackTop(k){var z=0;room[k].forEach(function(id){var it=find(id);if(it)z+=it.top||0;});return z;}
+function walkable(cx,cy){return cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&!(host&&host.x===cx&&host.y===cy)&&stackTop(cy*COLS+cx)<=4;}
+
+/* ---- 部屋を描く ---- */
+var rc=document.getElementById("room"),rx=rc.getContext("2d");
+var MAT=[[0,0,1,2],[3,4,1,2],[3,4,5,5]];
+function mat(cx,cy){return MAT[Math.floor(cy/2)][Math.floor(cx/2)];}
+/* 立版古：奥へすぼまる箱の中に、紙の板として家具を立てる。歩くと視点が横にずれて、手前と奥が違う速さで動く */
+var T=62.5,CX0=280,YF=340,VP=-146.8,KP=0.613,WH=210,cam=0,cutCache={};
+function pr(X,Z,hh){var s=1/(1+KP*(1-Z/ROWS));return [CX0+(X-COLS/2)*T*s+cam*T*(1-s),VP+(YF-VP)*s-(hh||0)*s,s];}
+function quad(p,fill){rx.beginPath();rx.moveTo(p[0][0],p[0][1]);for(var i=1;i<p.length;i++)rx.lineTo(p[i][0],p[i][1]);rx.closePath();rx.fillStyle=fill;rx.fill();}
+function edge(a,b,col,w){rx.beginPath();rx.moveTo(a[0],a[1]);rx.lineTo(b[0],b[1]);rx.strokeStyle=col;rx.lineWidth=w;rx.stroke();}
+function bw(X0,X1,h0,h1,col){quad([pr(X0,0,h0),pr(X1,0,h0),pr(X1,0,h1),pr(X0,0,h1)],col);}
+function cut(id,px){
+  if(cutCache[id])return cutCache[id];
+  var c=document.createElement("canvas");c.width=34;c.height=34;var g=c.getContext("2d"),i;
+  g.fillStyle="#f4efe4";for(i=0;i<N*N;i++)if(px[i])g.fillRect(i%N,Math.floor(i/N),3,3);
+  for(i=0;i<N*N;i++)if(px[i]){g.fillStyle=PAL[px[i]];g.fillRect(i%N+1,Math.floor(i/N)+1,1,1);}
+  cutCache[id]=c;return c;
+}
+function shadow(X,Z){var b=pr(X,Z,0),sc=T*b[2]/32;rx.fillStyle="rgba(60,55,30,0.28)";rx.beginPath();rx.ellipse(b[0],b[1]+2*sc,13*sc,3.2*sc,0,0,6.2832);rx.fill();}
+function stand(id,px,X,Z,lift){var b=pr(X,Z,0),sc=T*b[2]/32;rx.drawImage(cut(id,px),b[0]-17*sc,b[1]-29*sc-lift*sc,34*sc,34*sc);}
+function wallText(){
+  /* 壁の掛け軸は、その部屋の主のいちばん新しい短冊 */
+  var who=where==="mine"?uid:visitId;
+  for(var i=0;i<strips.length;i++)if(strips[i].owner===who)return strips[i].text;
+  return "";
+}
+function drawRoom(){
+  var cx,cy,i,m;
+  cam=(me.fx-(COLS-1)/2)*0.35;
+  rx.setTransform(2,0,0,2,0,0);rx.imageSmoothingEnabled=false;
+  rx.fillStyle="#15182b";rx.fillRect(0,0,W,H);
+  var A=pr(0,ROWS),B=pr(COLS,ROWS),C=pr(COLS,0),D=pr(0,0),At=pr(0,ROWS,WH),Bt=pr(COLS,ROWS,WH),Ct=pr(COLS,0,WH),Dt=pr(0,0,WH);
+  quad([A,D,Dt,At],"#b3a582");quad([B,C,Ct,Bt],"#c0b28f");quad([D,C,Ct,Dt],"#cdbf9f");
+  bw(0.5,3.4,48,202,"#f4efe4");bw(0.42,3.48,202,208,"#5a3a22");bw(0.42,3.48,42,48,"#5a3a22");bw(0.6,0.8,56,72,"#c2452d");
+  var txt=wallText().replace(/\s+/g,""),tr=pr(3.4,0,202),bl=pr(0.5,0,48),FS=14,PX=17,PY=16;
+  var rowsN=Math.max(1,Math.floor((bl[1]-tr[1]-10)/PY)),colsN=Math.max(1,Math.floor((tr[0]-bl[0]-14)/PX));
+  if(txt.length>rowsN*colsN)txt=txt.slice(0,rowsN*colsN-1)+"…";
+  rx.fillStyle="#1b1622";rx.font=FS+'px "Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif';rx.textAlign="center";rx.textBaseline="middle";
+  for(i=0;i<txt.length;i++){var ch=txt.charAt(i),tx=tr[0]-8-Math.floor(i/rowsN)*PX-PX/2,ty=tr[1]+8+(i%rowsN)*PY+PY/2;
+    if("、。".indexOf(ch)>=0)rx.fillText(ch,tx+FS*0.55,ty-FS*0.5);
+    else if("ー〜…—".indexOf(ch)>=0){rx.save();rx.translate(tx,ty);rx.rotate(Math.PI/2);rx.fillText(ch,0,0);rx.restore();}
+    else rx.fillText(ch,tx,ty);}
+  bw(4.0,7.2,70,180,"#5a3a22");bw(4.12,7.08,78,172,"#1d2748");bw(6.3,6.6,135,160,"#f1cf5a");bw(6.45,6.6,147,160,"#1d2748");
+  [[4.4,150],[4.9,100],[5.3,160],[5.9,110],[6.8,95]].forEach(function(p){bw(p[0],p[0]+0.04,p[1],p[1]+4,"#f4efe4");});
+  bw(5.56,5.64,78,172,"#5a3a22");bw(4.12,7.08,123,127,"#5a3a22");
+  for(cy=0;cy<ROWS;cy++)for(cx=0;cx<COLS;cx++){m=mat(cx,cy);
+    quad([pr(cx,cy),pr(cx+1,cy),pr(cx+1,cy+1),pr(cx,cy+1)],(m===0||m===5)?"#bdb67d":"#b0a970");}
+  for(cy=0;cy<ROWS;cy++)for(cx=0;cx<COLS;cx++){m=mat(cx,cy);
+    if(cx<COLS-1&&mat(cx+1,cy)!==m)edge(pr(cx+1,cy),pr(cx+1,cy+1),"#34472f",1.6);
+    if(cy<ROWS-1&&mat(cx,cy+1)!==m)edge(pr(cx,cy+1),pr(cx+1,cy+1),"#34472f",1.6);}
+  [[A,D],[D,C],[C,B],[D,Dt],[C,Ct],[Dt,Ct],[At,Dt],[Bt,Ct],[A,At],[B,Bt],[A,B]].forEach(function(e){edge(e[0],e[1],"#f4efe4",2);});
+  var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1];
+  if(!me.moving&&fx0>=0&&fx0<COLS&&fy0>=0&&fy0<ROWS){
+    var q=[pr(fx0+0.1,fy0+0.1),pr(fx0+0.9,fy0+0.1),pr(fx0+0.9,fy0+0.9),pr(fx0+0.1,fy0+0.9)];
+    rx.beginPath();rx.moveTo(q[0][0],q[0][1]);for(i=1;i<4;i++)rx.lineTo(q[i][0],q[i][1]);rx.closePath();rx.strokeStyle="#f0a23c";rx.lineWidth=2;rx.stroke();}
+  var dr=me.y;
+  if(me.moving&&me.path.length)dr=Math.max(me.from[1],me.path[0][1]);
+  var pk=Math.min(1,(performance.now()-pet.t0)/STEP),pfx=pet.from[0]+(pet.x-pet.from[0])*pk,pfy=pet.from[1]+(pet.y-pet.from[1])*pk,prow=pk<1?Math.max(pet.from[1],pet.y):pet.y;
+  for(cy=0;cy<ROWS;cy++){
+    for(cx=0;cx<COLS;cx++){
+      var st=room[cy*COLS+cx],z=0;
+      for(i=0;i<st.length;i++){var it=find(st[i]);if(!it)continue;if(!z&&i===0)shadow(cx+0.5,cy+0.82);stand(it.ck||it.id,it.px,cx+0.5,cy+0.82,z);z+=it.top||0;}
+    }
+    if(host&&cy===host.y){shadow(host.x+0.5,host.y+0.82);stand(host.key,host.px,host.x+0.5,host.y+0.82,0);}
+    if(host&&host.pp&&cy===host.pp[1]){shadow(host.pp[0]+0.5,host.pp[1]+0.82);stand("__pet"+host.pet,PETPX[host.pet],host.pp[0]+0.5,host.pp[1]+0.82,0);}
+    if(cy===dr){
+      var mz=stackTop(Math.round(me.fy)*COLS+Math.round(me.fx))+(me.jz||0);
+      if(me.hop&&me.moving&&me.path.length){
+        var zf=stackTop(me.from[1]*COLS+me.from[0]),zt=stackTop(me.path[0][1]*COLS+me.path[0][0]),hk=me.k||0;
+        mz=Math.round(zf+(zt-zf)*hk+Math.sin(Math.PI*hk)*10);
+      }
+      var bob=(me.moving&&!me.hop&&Math.floor(performance.now()/120)%2)?1:0;
+      shadow(me.fx+0.5,me.fy+0.82);stand(lookKey(),CHAR,me.fx+0.5,me.fy+0.82,mz+bob);
+    }
+    if(petKind&&cy===prow){shadow(pfx+0.5,pfy+0.82);stand("__pet"+petKind,PETPX[petKind],pfx+0.5,pfy+0.82,stackTop(Math.round(pfy)*COLS+Math.round(pfx)));}
+  }
+  if(host){
+    var hb=pr(host.x+0.5,host.y+0.82,0),hs=T*hb[2]/32,hy=hb[1]-25*hs;
+    rx.font='11px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="bottom";
+    var hw=rx.measureText(host.name).width;
+    rx.fillStyle="rgba(21,24,43,0.82)";rx.fillRect(hb[0]-hw/2-3,hy-14,hw+6,15);
+    rx.fillStyle="#f4efe4";rx.fillText(host.name,hb[0],hy);
+  }
+  rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
+  if(!me.moving&&!me.jumping)syncDresser();
+}
+
+/* ---- 歩く ---- */
+function route(tx,ty){
+  var prev={},q=[[me.x,me.y]],d=[[1,0],[-1,0],[0,1],[0,-1]];prev[me.y*COLS+me.x]=-1;
+  while(q.length){var p=q.shift();
+    if(p[0]===tx&&p[1]===ty){var out=[],k=ty*COLS+tx;while(prev[k]!==-1){out.unshift([k%COLS,Math.floor(k/COLS)]);k=prev[k];}return out;}
+    for(var i=0;i<4;i++){var nx=p[0]+d[i][0],ny=p[1]+d[i][1],nk=ny*COLS+nx;
+      if(walkable(nx,ny)&&prev[nk]===undefined){prev[nk]=p[1]*COLS+p[0];q.push([nx,ny]);}}
+  }
+  return null;
+}
+function placeMe(){
+  if(walkable(me.x,me.y))return;var best=null,bd=99;
+  for(var cy=0;cy<ROWS;cy++)for(var cx=0;cx<COLS;cx++){var dd=Math.abs(cx-me.x)+Math.abs(cy-me.y);if(walkable(cx,cy)&&dd<bd){bd=dd;best=[cx,cy];}}
+  if(best){me.x=me.fx=best[0];me.y=me.fy=best[1];}
+}
+function step(dx,dy){
+  if(me.moving||me.jumping)return;
+  var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];
+  var tx=me.x+dx,ty=me.y+dy;
+  if(tx<0||tx>=COLS||ty<0||ty>=ROWS){drawRoom();setStatus("そっちは壁。");return;}
+  if(host&&host.x===tx&&host.y===ty){drawRoom();setStatus(host.name+"がいる。");return;}
+  var tst=room[ty*COLS+tx];
+  if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus("「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
+  var d=stackTop(ty*COLS+tx)-stackTop(me.y*COLS+me.x);
+  if(d>14){drawRoom();setStatus("高すぎて登れない。低い家具なら跳び乗れる。");return;}
+  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();return;}
+  petFollow([me.x,me.y]);me.hop=d>4||d<-4;me.path=[[tx,ty]];me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();
+  if(me.hop)setStatus(d>0?"跳び乗った。":"跳び降りた。");
+  requestAnimationFrame(tick);
+}
+function jump(){
+  if(me.moving||me.jumping)return;
+  if(reduce){setStatus("その場で跳んだ。");return;}
+  me.jumping=true;me.t0=performance.now();requestAnimationFrame(jumpTick);
+}
+function jumpTick(now){
+  var k=(now-me.t0)/380;
+  if(k>=1){me.jumping=false;me.jz=0;drawRoom();return;}
+  me.jz=Math.round(Math.sin(Math.PI*k)*12);drawRoom();requestAnimationFrame(jumpTick);
+}
+function walkTo(tx,ty){
+  if(me.moving||me.jumping)return;me.hop=false;
+  if(tx===me.x&&ty===me.y){setStatus("もうそこに立っている。");return;}
+  if(!walkable(tx,ty)){setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
+  var p=route(tx,ty);if(!p){setStatus("家具にふさがれて、そこまで歩けない。");return;}
+  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();return;}
+  petFollow([me.x,me.y]);me.path=p;me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();requestAnimationFrame(tick);
+}
+function tick(now){
+  var seg=me.path[0],k=(now-me.t0)/(me.hop?STEP*1.6:STEP);
+  me.dir=[seg[0]-me.from[0],seg[1]-me.from[1]];
+  if(k>=1){me.x=me.fx=seg[0];me.y=me.fy=seg[1];me.path.shift();me.from=[me.x,me.y];me.t0=now;me.k=0;
+    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();return;}
+    petFollow([me.x,me.y]);
+  }else{me.k=k;me.fx=me.from[0]+(seg[0]-me.from[0])*k;me.fy=me.from[1]+(seg[1]-me.from[1])*k;}
+  drawRoom();requestAnimationFrame(tick);
+}
+
+rc.addEventListener("click",function(e){
+  var r=rc.getBoundingClientRect();
+  var px=(e.clientX-r.left)/r.width*W,py=(e.clientY-r.top)/r.height*H;
+  var s=(py-VP)/(YF-VP),cx=-1,cy=-1;
+  if(s>0){cy=Math.floor(ROWS*(1-(1/s-1)/KP));cx=Math.floor(COLS/2+(px-CX0-cam*T*(1-s))/(T*s));}
+  if(cx<0||cx>=COLS||cy<0||cy>=ROWS){
+    var k1=pr(0.5,0,202),k2=pr(3.4,0,48),wt=wallText();
+    if(px>=k1[0]&&px<=k2[0]&&py>=k1[1]&&py<=k2[1])setStatus(wt?"壁の短冊：「"+wt+"」":"壁の短冊はまだ白紙。「短冊」で書くと、ここに出る。");
+    else setStatus("そこは壁。畳の上をタップする。");
+    return;}
+  walkTo(cx,cy);
+});
+
+/* ---- 荷物：目の前の畳に出す・拾う ---- */
+var inv=document.getElementById("inv"),statusEl=document.getElementById("status"),discard=document.getElementById("discard"),baseEl=document.getElementById("base"),bagEl=document.getElementById("bag"),bagBtn=document.getElementById("bag-btn");
+function setStatus(t){statusEl.textContent=t;}
+function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
+function hint(){setStatus(where==="mine"?"矢印で歩く。橙の印が目の前の畳。荷物から出した物はそこに置かれる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。");}
+function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
+function inRoom(p){return p[0]>=0&&p[0]<COLS&&p[1]>=0&&p[1]<ROWS;}
+function itemButton(it,fn){
+  var b=document.createElement("button");b.className="item";b.type="button";
+  var c=document.createElement("canvas");c.width=N;c.height=N;paint(c.getContext("2d"),it.px,0,0);b.appendChild(c);
+  var s=document.createElement("span");s.textContent=it.name;b.appendChild(s);
+  if(it.custom){var m=document.createElement("span");m.className="mine";m.textContent="自作";b.appendChild(m);}
+  b.addEventListener("click",function(){fn(it);});return b;
+}
+function drawInv(){inv.textContent="";myItems().forEach(function(it){inv.appendChild(itemButton(it,putOut));});}
+function findMine(id){var a=myItems();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
+function drawBase(){baseEl.textContent="";myItems().forEach(function(it){baseEl.appendChild(itemButton(it,useBase));});
+  var cur=lastBase&&findMine(lastBase);discard.hidden=!(cur&&cur.custom);}
+function putOut(it){
+  if(me.moving||me.jumping)return;if(where!=="mine"){setStatus("人の部屋の物は動かせない。");return;}var f=front();
+  if(!inRoom(f)){setStatus("目の前は壁。向きを変えてから出す。");return;}
+  var st=room[f[1]*COLS+f[0]];
+  if(st.length>=MAXSTACK){setStatus("目の前にはもう"+MAXSTACK+"つ重なっている。");return;}
+  var under=st.length?find(st[st.length-1]):null;st.push(it.id);save();drawRoom();count();
+  setStatus(under?"荷物から「"+it.name+"」を出して、「"+under.name+"」の上に置いた。":"荷物から「"+it.name+"」を出して、目の前に置いた。");
+}
+function pick(){
+  if(me.moving||me.jumping)return;if(where!=="mine"){setStatus("人の部屋の物は動かせない。");return;}var f=front();
+  if(!inRoom(f)||!room[f[1]*COLS+f[0]].length){setStatus("目の前には何もない。家具の方を向いてから拾う。");return;}
+  var n=find(room[f[1]*COLS+f[0]].pop());save();drawRoom();count();setStatus("「"+(n?n.name:"家具")+"」を拾って荷物に入れた。");
+}
+function toggleBag(open){
+  if(open&&where!=="mine"){setStatus("人の部屋では荷物を開けない。");return;}
+  bagOpen=open;bagEl.hidden=!open;bagBtn.setAttribute("aria-pressed",String(open));
+  if(open){drawInv();setStatus("出したい物をタップすると、目の前の畳に置く。");}else hint();
+}
+bagBtn.addEventListener("click",function(){toggleBag(!bagOpen);});
+document.getElementById("pick-btn").addEventListener("click",pick);
+function useBase(it){
+  pushUndo();draft=it.px.slice();topIn.value=String(Math.min(28,it.top||0));lastBase=it.id;drawEditor();drawBase();
+  makeStatus.textContent="「"+it.name+"」を写した。描き直して名前をつけると、別の家具として増える。";
+}
+discard.addEventListener("click",function(){
+  var cur=lastBase&&findMine(lastBase);if(!cur||!cur.custom)return;
+  discardFurn(cur);
+});
+document.getElementById("clear-room").addEventListener("click",function(){
+  room=emptyRoom();save();drawRoom();count();setStatus("部屋の物を全部、荷物にしまった。");
+});
+
+/* ---- 衣装台と猫 ---- */
+function petFollow(prev){if(!petKind)return;pet.from=[pet.x,pet.y];pet.x=prev[0];pet.y=prev[1];pet.t0=reduce?0:performance.now();}
+function placePet(){
+  var d=[[-1,0],[1,0],[0,1],[0,-1]];pet.x=me.x;pet.y=me.y;
+  for(var i=0;i<4;i++){var nx=me.x+d[i][0],ny=me.y+d[i][1];if(walkable(nx,ny)){pet.x=nx;pet.y=ny;break;}}
+  pet.from=[pet.x,pet.y];pet.t0=0;
+}
+function syncDresser(){
+  var el=document.getElementById("dresser"),f=front(),on=where==="mine"&&inRoom(f)&&room[f[1]*COLS+f[0]].indexOf("p-ishoudai")>=0;
+  if(on&&el.hidden){el.hidden=false;drawDresser();setStatus("衣装台の前に立った。下で着替えられる。");}
+  else if(!on&&!el.hidden)el.hidden=true;
+}
+function swRow(id,list,cur,fn){var el=document.getElementById(id);el.textContent="";list.forEach(function(v){
+  var b=document.createElement("button");b.type="button";b.className="sw";b.style.background=PAL[v];b.setAttribute("aria-label","色");b.setAttribute("aria-pressed",String(v===cur));
+  b.addEventListener("click",function(){fn(v);});el.appendChild(b);});}
+function btnRow(id,names,cur,fn){var el=document.getElementById(id);el.textContent="";names.forEach(function(nm,i){
+  var b=document.createElement("button");b.type="button";b.className="btn small";b.textContent=nm;b.setAttribute("aria-pressed",String(i===cur));
+  b.addEventListener("click",function(){fn(i);});el.appendChild(b);});}
+function relook(){CHAR=makeChar(look);save();drawRoom();drawDresser();}
+function drawDresser(){
+  btnRow("opt-hair",HAIRS,look.hair,function(i){look.hair=i;relook();});
+  swRow("opt-hc",HCS,look.hc,function(v){look.hc=v;relook();});
+  swRow("opt-k",KS,look.k,function(v){look.k=v;relook();});
+  swRow("opt-o",OS,look.o,function(v){look.o=v;relook();});
+  btnRow("opt-pet",PETN,petKind,function(i){petKind=i;placePet();save();drawRoom();drawDresser();});
+  var g=document.getElementById("look-pv").getContext("2d");g.clearRect(0,0,34,34);g.imageSmoothingEnabled=false;g.drawImage(cut(lookKey(),CHAR),0,0);
+}
+
+/* ---- 家具をつくる ---- */
+var ec=document.getElementById("editor"),ex=ec.getContext("2d"),pv=document.getElementById("pv").getContext("2d");
+var S=12,draft=new Array(N*N).fill(0),color=1,tool="pen",down=false,undoStack=[];
+var makeStatus=document.getElementById("make-status"),topIn=document.getElementById("ftop");
+function pushUndo(){undoStack.push(draft.slice());if(undoStack.length>30)undoStack.shift();}
+function drawEditor(){
+  for(var i=0;i<N*N;i++){var x=i%N,y=Math.floor(i/N);
+    if(draft[i])ex.fillStyle=PAL[draft[i]];
+    else if(y>=8)ex.fillStyle=(x+y)%2?"#4a4f6e":"#444967";
+    else ex.fillStyle=(x+y)%2?"#2a2e55":"#232748";
+    ex.fillRect(x*S,y*S,S,S);
+  }
+  ex.fillStyle="rgba(255,255,255,.06)";for(var k=1;k<N;k++){ex.fillRect(k*S,0,1,N*S);ex.fillRect(0,k*S,N*S,1);}
+  var t=Number(topIn.value)||0;ex.fillStyle="#f0a23c";ex.fillRect(0,(30-t)*S-1,N*S,2);
+  document.getElementById("ftop-v").textContent=t;
+  pv.fillStyle="#232748";pv.fillRect(0,0,32,8);pv.fillStyle="#b9b27a";pv.fillRect(0,8,32,24);paint(pv,draft,0,0);
+}
+function cellAt(e){var r=ec.getBoundingClientRect();return [Math.floor((e.clientX-r.left)/r.width*N),Math.floor((e.clientY-r.top)/r.height*N)];}
+function setPx(x,y){if(x<0||x>=N||y<0||y>=N)return false;if(draft[y*N+x]===color)return false;draft[y*N+x]=color;return true;}
+function dab(e){
+  var c=cellAt(e),ch=setPx(c[0],c[1]);
+  if(tool==="fat"){ch=setPx(c[0]+1,c[1])||ch;ch=setPx(c[0],c[1]+1)||ch;ch=setPx(c[0]+1,c[1]+1)||ch;}
+  if(ch)drawEditor();
+}
+function flood(x,y){
+  if(x<0||x>=N||y<0||y>=N)return;var from=draft[y*N+x];if(from===color)return;
+  var q=[[x,y]];while(q.length){var p=q.pop(),px=p[0],py=p[1];
+    if(px<0||px>=N||py<0||py>=N||draft[py*N+px]!==from)continue;
+    draft[py*N+px]=color;q.push([px+1,py],[px-1,py],[px,py+1],[px,py-1]);}
+  drawEditor();
+}
+ec.addEventListener("pointerdown",function(e){
+  e.preventDefault();pushUndo();
+  if(tool==="fill"){var c=cellAt(e);flood(c[0],c[1]);return;}
+  down=true;try{ec.setPointerCapture(e.pointerId);}catch(_){}dab(e);
+});
+ec.addEventListener("pointermove",function(e){if(down)dab(e);});
+["pointerup","pointercancel"].forEach(function(n){ec.addEventListener(n,function(){down=false;});});
+var tools={pen:document.getElementById("t-pen"),fat:document.getElementById("t-fat"),fill:document.getElementById("t-fill")};
+Object.keys(tools).forEach(function(k){tools[k].addEventListener("click",function(){
+  tool=k;Object.keys(tools).forEach(function(j){tools[j].setAttribute("aria-pressed",String(j===k));});});});
+document.getElementById("undo").addEventListener("click",function(){
+  if(!undoStack.length){makeStatus.textContent="これより前には戻れない。";return;}
+  draft=undoStack.pop();drawEditor();makeStatus.textContent="ひとつ戻した。";
+});
+topIn.addEventListener("input",drawEditor);
+var RGB=PAL.map(function(h){return h?[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]:null;});
+document.getElementById("imgin").addEventListener("change",function(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  var url=URL.createObjectURL(f),im=new Image();
+  im.onload=function(){
+    var c=document.createElement("canvas");c.width=N;c.height=N;var g=c.getContext("2d");
+    var sc=Math.min(N/im.width,N/im.height),w=Math.max(1,Math.round(im.width*sc)),h=Math.max(1,Math.round(im.height*sc));
+    g.drawImage(im,Math.floor((N-w)/2),Math.max(0,N-h-1),w,h);
+    var d;try{d=g.getImageData(0,0,N,N).data;}catch(err){makeStatus.textContent="この画像は読み込めなかった。別の画像で試す。";return;}
+    pushUndo();
+    for(var i=0;i<N*N;i++){var r=d[i*4],gr=d[i*4+1],b=d[i*4+2],best=0,bd=1e9;
+      if(d[i*4+3]>=128){for(var q=1;q<PAL.length;q++){var k=RGB[q],dd=(r-k[0])*(r-k[0])+(gr-k[1])*(gr-k[1])+(b-k[2])*(b-k[2]);if(dd<bd){bd=dd;best=q;}}}
+      draft[i]=best;}
+    drawEditor();try{URL.revokeObjectURL(url);}catch(_){}e.target.value="";
+    makeStatus.textContent="画像を32×32・16色のドット絵にした。いらない背景は消しゴムと塗りつぶしで消せる。";
+  };
+  im.onerror=function(){makeStatus.textContent="この画像は読み込めなかった。別の画像で試す。";};
+  im.src=url;
+});
+var pal=document.getElementById("pal");
+function drawPal(){
+  pal.textContent="";
+  for(var i=1;i<PAL.length;i++)(function(i){
+    var b=document.createElement("button");b.type="button";b.className="sw";b.style.background=PAL[i];
+    b.setAttribute("aria-label","色"+i);b.setAttribute("aria-pressed",String(color===i));
+    b.addEventListener("click",function(){color=i;drawPal();});pal.appendChild(b);
+  })(i);
+  var e=document.createElement("button");e.type="button";e.className="sw erase";e.setAttribute("aria-label","消しゴム");
+  e.setAttribute("aria-pressed",String(color===0));e.addEventListener("click",function(){color=0;drawPal();});pal.appendChild(e);
+}
+document.getElementById("wipe").addEventListener("click",function(){pushUndo();draft.fill(0);drawEditor();makeStatus.textContent="白紙に戻した。「ひとつ戻す」で取り消せる。";});
+/* ---- 共通の小道具 ---- */
+var POSTMAX=80,LETMAX=400,TEAMAX=3,NAMEMAX=12,MAXFURN=40,FEEMAX=400,TARGETMAX=100,NONAME="名なし";
+var sb=null,isAdmin=false,profiles=Object.create(null),strips=[],replies=[],letters=[],tea=null;
+var cfg={payUrl:"",feeNote:"",reportUrl:""};
+function el(id){return document.getElementById(id);}
+function mk(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
+function note(t){var n=el("notice");n.textContent=t||"";n.hidden=!t;}
+function setLobby(t){el("lobby-msg").textContent=t;}
+function when(t){if(!(t>0))return "";var d=new Date(t);return (d.getMonth()+1)+"月"+d.getDate()+"日 "+d.getHours()+"時"+("0"+d.getMinutes()).slice(-2)+"分";}
+
+/* ---- 読んだデータは信用しない。型と長さを確かめてから使う ---- */
+var BAD=/[\u0000-\u0009\u000b-\u001f\u007f​-‏‪-‮⁦-⁩﻿]/g;
+var UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function clip(v,max,oneLine){
+  if(typeof v!=="string")return "";
+  var s=v.slice(0,max*4+16).replace(BAD,"");if(oneLine)s=s.replace(/\s+/g," ");s=s.trim();
+  var a=Array.from(s);return a.length>max?a.slice(0,max).join("").trim():s;
+}
+function isUuid(v){return typeof v==="string"&&UUID.test(v);}
+function timeOf(v){var t=typeof v==="string"?Date.parse(v.slice(0,40)):NaN;return isFinite(t)&&t>0?Math.min(t,Date.now()+60000):0;}
+function rows(d){return Array.isArray(d)?d:[];}
+function sanLook(v){
+  var L={hair:0,hc:1,k:13,o:7};
+  if(v&&typeof v==="object"){if(v.hair===0||v.hair===1||v.hair===2)L.hair=v.hair;if(HCS.indexOf(v.hc)>=0)L.hc=v.hc;if(KS.indexOf(v.k)>=0)L.k=v.k;if(OS.indexOf(v.o)>=0)L.o=v.o;}
+  return L;
+}
+function sanPet(v){return (v===0||v===1||v===2||v===3)?v:0;}
+function startRoom(){var r=emptyRoom();START.forEach(function(s){r[s[1]*COLS+s[0]].push(s[2]);});return r;}
+/* 部屋は48個の文字列で保存する。1マスの重なりは "," でつなぐ */
+function encRoom(r){return r.map(function(c){return c.join(",");});}
+function okItemId(v){return typeof v==="string"&&(/^p-[a-z0-9]{1,24}$/.test(v)||UUID.test(v));}
+function sanRoom(v){
+  if(!Array.isArray(v)||v.length!==COLS*ROWS)return emptyRoom();
+  return v.map(function(c){
+    var o=[],a=typeof c==="string"?c.slice(0,120).split(","):(Array.isArray(c)?c:[]);
+    for(var i=0;i<a.length&&o.length<MAXSTACK;i++)if(okItemId(a[i]))o.push(a[i].toLowerCase());
+    return o;
+  });
+}
+/* 自作の家具の絵は、1マス1文字（0〜g）の1024文字 */
+function encPx(px){return px.map(function(c){return (c>=1&&c<=16?c:0).toString(17);}).join("");}
+function sanFurn(list,visiting){
+  var out=[],seen={};
+  rows(list).forEach(function(f){
+    if(out.length>=MAXFURN||!f||typeof f!=="object"||!isUuid(f.id)||typeof f.px!=="string"||f.px.length!==N*N)return;
+    var id=f.id.toLowerCase();if(seen[id])return;seen[id]=true;
+    var px=new Array(N*N);
+    for(var j=0;j<N*N;j++){var c=parseInt(f.px.charAt(j),17);px[j]=(c>=1&&c<=16)?c:0;}
+    var top=typeof f.top==="number"&&isFinite(f.top)?Math.max(0,Math.min(28,Math.round(f.top))):0;
+    var it={id:id,name:clip(f.name,10,true)||"家具",px:px,top:top,custom:true};
+    if(visiting)it.ck="v:"+id;
+    out.push(it);
+  });
+  return out;
+}
+function sanProfile(d){
+  if(!d||typeof d!=="object"||!isUuid(d.id))return null;
+  return {id:d.id.toLowerCase(),name:clip(d.name,NAMEMAX,true)||NONAME,look:sanLook(d.look),pet:sanPet(d.pet),room:sanRoom(d.room),joinedAt:timeOf(d.joined_at)};
+}
+function sanStrips(list){
+  var out=[];
+  rows(list).forEach(function(p){
+    if(!p||typeof p!=="object"||!isUuid(p.id)||!isUuid(p.owner))return;
+    var text=clip(p.body,POSTMAX);if(text)out.push({id:p.id,owner:p.owner.toLowerCase(),text:text,t:timeOf(p.created_at)});
+  });
+  out.sort(function(a,b){return b.t-a.t;});return out;
+}
+function sanReplies(list){
+  var out=[];
+  rows(list).forEach(function(r){
+    if(!r||typeof r!=="object"||!isUuid(r.id)||!isUuid(r.strip_id)||!isUuid(r.author))return;
+    var text=clip(r.body,POSTMAX);if(text)out.push({id:r.id,strip:r.strip_id,author:r.author.toLowerCase(),text:text,t:timeOf(r.created_at)});
+  });
+  out.sort(function(a,b){return a.t-b.t;});return out;
+}
+function sanLetters(list){
+  var out=[];
+  rows(list).forEach(function(l){
+    if(!l||typeof l!=="object"||!isUuid(l.id)||!isUuid(l.sender)||!isUuid(l.recipient))return;
+    var text=clip(l.body,LETMAX);if(text)out.push({id:l.id,from:l.sender.toLowerCase(),to:l.recipient.toLowerCase(),text:text,t:timeOf(l.created_at)});
+  });
+  out.sort(function(a,b){return b.t-a.t;});return out;
+}
+function okUrl(v){
+  if(typeof v!=="string"||v.length>300||!/^https:\/\/[^\s<>"'`\\]+$/.test(v))return "";
+  try{var u=new URL(v);return u.protocol==="https:"?u.href:"";}catch(e){return "";}
+}
+function okContact(v){
+  if(typeof v==="string"&&v.length<=300&&/^mailto:[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$/.test(v))return v;
+  return okUrl(v);
+}
+function setLink(a,u){if(u){a.href=u;a.hidden=false;}else{a.removeAttribute("href");a.hidden=true;}}
+function sanCfg(d){d=(d&&typeof d==="object")?d:{};return {payUrl:okUrl(d.pay_url),feeNote:clip(d.fee_note,FEEMAX),reportUrl:okContact(d.report_url)};}
+function nameOf(id){if(id===uid&&myName)return myName;var r=profiles[id];return (r&&r.name)||NONAME;}
+function otherIds(){
+  var a=[];for(var id in profiles)if(id!==uid)a.push(id);
+  a.sort(function(x,y){return (profiles[x].joinedAt-profiles[y].joinedAt)||(x<y?-1:1);});return a;
+}
+
+/* ---- データの出し入れ。失敗は投げずに {data,error} で受ける ---- */
+function run(q){
+  try{
+    return Promise.resolve(q).then(function(r){return (r&&typeof r==="object")?r:{data:null,error:{message:"empty"}};},
+      function(e){return {data:null,error:e||{message:"network"}};});
+  }catch(e){return Promise.resolve({data:null,error:e});}
+}
+function errText(e){
+  var c=e&&e.code,m=String((e&&e.message)||""),s=e&&e.status;
+  if(/fetch|network|load failed/i.test(m))return "つながらなかった。通信を確かめる。";
+  if(s===429||/rate limit/i.test(m))return "回数が多すぎる。少し待つ。";
+  if(c==="42501")return "いまの立場ではできない操作だった。";
+  if(c==="23514"||c==="23505"||c==="22001"||c==="23503")return "決まりに合わない内容だった。";
+  if(c==="PGRST301"||s===401||/jwt/i.test(m))return "ログインが切れた。入り直す。";
+  return "うまくいかなかった。少し待ってもう一度。";
+}
+
+/* ---- 部屋の保存：変化があったときだけ、少し待ってまとめて ---- */
+var saveT=0,saving=false,dirty=false;
+function save(){if(phase!=="in")return;dirty=true;clearTimeout(saveT);saveT=setTimeout(flushSave,1500);}
+function flushSave(){
+  clearTimeout(saveT);if(!dirty||saving||phase!=="in"||!sb)return Promise.resolve();
+  dirty=false;saving=true;
+  var body={look:{hair:look.hair,hc:look.hc,k:look.k,o:look.o},pet:petKind,room:encRoom(myRoomRef()),updated_at:new Date().toISOString()};
+  return run(sb.from("profiles").update(body).eq("id",uid).select("id")).then(function(r){
+    saving=false;if(phase!=="in")return;
+    if(r.error)note("部屋を保存できなかった。"+errText(r.error));
+    else if(!rows(r.data).length)note("部屋を保存できなかった。入場が取り消されたかもしれない。");
+    if(dirty)save();
+  });
+}
+document.addEventListener("visibilitychange",function(){if(document.hidden)flushSave();});
+
+/* ---- 家具をつくる・捨てる（furniture の行として保存） ---- */
+var making=false;
+el("save").addEventListener("click",function(){
+  if(phase!=="in"||making)return;
+  if(!draft.some(Boolean)){makeStatus.textContent="まだ何も描かれていない。1マスでも描くと家具にできる。";return;}
+  if(custom.length>=MAXFURN){makeStatus.textContent="自作の家具は"+MAXFURN+"個まで。いらない家具を捨ててから作る。";return;}
+  var name=clip(el("fname").value,10,true)||("自作の家具"+(custom.length+1));
+  var row={owner:uid,name:name,top:Math.max(0,Math.min(28,Number(topIn.value)||0)),px:encPx(draft)};
+  try{if(window.crypto&&typeof crypto.randomUUID==="function")row.id=crypto.randomUUID();}catch(e){}
+  making=true;makeStatus.textContent="家具を保存している…";
+  run(sb.from("furniture").insert(row).select("id,name,top,px").single()).then(function(r){
+    making=false;
+    var it=r.error?null:sanFurn([r.data])[0];
+    if(!it){makeStatus.textContent="家具にできなかった。"+(r.error?errText(r.error):"");return;}
+    custom.push(it);
+    draft.fill(0);undoStack=[];el("fname").value="";drawEditor();
+    if(where!=="mine")goHome();
+    show("room");toggleBag(true);setStatus("「"+it.name+"」ができて、荷物に入った。タップすると目の前に出せる。");
+  });
+});
+function discardFurn(cur){
+  if(phase!=="in"||making)return;
+  making=true;makeStatus.textContent="捨てている…";
+  run(sb.from("furniture").delete().eq("id",cur.id)).then(function(r){
+    making=false;
+    if(r.error){makeStatus.textContent="捨てられなかった。"+errText(r.error);return;}
+    custom=custom.filter(function(c){return c.id!==cur.id;});
+    var strip=function(s){return s.filter(function(v){return v!==cur.id;});};
+    if(where==="mine")room=room.map(strip);else if(home)home=home.map(strip);
+    lastBase=null;save();drawBase();drawInv();drawRoom();count();makeStatus.textContent="「"+cur.name+"」を捨てた。部屋に置いてあった分も消えた。";
+  });
+}
+
+/* ---- お茶：数えるのはデータ側 ---- */
+function drawTea(){el("tea").textContent=(phase==="in"&&tea!==null)?"今日のお茶 あと"+tea+"杯":"";}
+function loadTea(){
+  return run(sb.rpc("tea_left")).then(function(r){
+    if(!r.error&&typeof r.data==="number"&&isFinite(r.data))tea=Math.max(0,Math.min(TEAMAX,Math.floor(r.data)));
+    drawTea();
+  });
+}
+
+/* ---- 世界を読み直す（開いたとき・タブを切り替えたとき・操作のあと） ---- */
+var loading=false,again=false;
+function refresh(){
+  if(phase!=="in"||!sb)return Promise.resolve();
+  if(loading){again=true;return Promise.resolve();}
+  loading=true;
+  return Promise.all([
+    run(sb.from("profiles").select("id,name,look,pet,room,joined_at").limit(500)),
+    run(sb.from("strips").select("id,owner,body,created_at").order("created_at",{ascending:false}).limit(300)),
+    run(sb.from("replies").select("id,strip_id,author,body,created_at").order("created_at",{ascending:false}).limit(1000)),
+    loadTea()
+  ]).then(function(r){
+    loading=false;
+    if(phase!=="in")return;
+    if(r[0].error||r[1].error||r[2].error){note("読み直せなかった。"+errText(r[0].error||r[1].error||r[2].error));}
+    else{
+      var m=Object.create(null);rows(r[0].data).forEach(function(d){var p=sanProfile(d);if(p)m[p.id]=p;});
+      profiles=m;strips=sanStrips(r[1].data);replies=sanReplies(r[2].data);
+      /* 自分の行が見えなくなったら、入場の状態から確かめ直す */
+      if(!profiles[uid]){checkEntry();return;}
+      if(where==="res"&&!profiles[visitId]){goHome();note("訪ねていた部屋は、なくなった。");}
+    }
+    drawAll();
+    if(again){again=false;refresh();}
+  });
+}
+function myStrips(){return strips.filter(function(p){return p.owner===uid;});}
+function repliesFor(stripId){return replies.filter(function(r){return r.strip===stripId;}).slice(-50);}
+
+/* ---- 短冊のTL ---- */
+function drawTL(){
+  var tl=el("tl"),sl=tl.scrollLeft,list=strips.filter(function(p){return p.owner===uid||profiles[p.owner];}).slice(0,150);
+  tl.textContent="";
+  list.forEach(function(p){
+    var mine=p.owner===uid,s=mk("div","strip brush");s.appendChild(mk("div","",p.text));
+    s.appendChild(mk("div","meta",(mine?"自分":nameOf(p.owner))+" "+when(p.t)));
+    var b=mk("button","tear",mine?"外す":"訪ねる");b.type="button";
+    b.addEventListener("click",function(){
+      if(!mine){visitRes(p.owner);return;}
+      b.disabled=true;
+      run(sb.from("strips").delete().eq("id",p.id)).then(function(r){
+        if(r.error){el("post-status").textContent="外せなかった。"+errText(r.error);b.disabled=false;return;}
+        strips=strips.filter(function(x){return x.id!==p.id;});drawTL();drawMyReplies();drawRoom();refresh();
+      });
+    });
+    s.appendChild(b);tl.appendChild(s);
+  });
+  if(!list.length)tl.appendChild(mk("p","hint","まだ短冊がない。"));
+  tl.scrollLeft=sl;
+  el("tl-hint").textContent="返事はTLからは書けない。「訪ねる」でその人の部屋へ行くと書ける。"+(otherIds().length?"":"まだほかの住民はいない。");
+}
+function replyLine(r){
+  var d=mk("div","reply brush",r.text);
+  d.appendChild(mk("div","meta",(r.author===uid?"自分":nameOf(r.author))+" "+when(r.t)));
+  return d;
+}
+function plainBtn(label,fn){var b=mk("button","btn small",label);b.type="button";b.style.fontFamily="var(--font)";b.addEventListener("click",fn);return b;}
+function drawMyReplies(){
+  var box=el("my-replies");box.textContent="";
+  box.appendChild(mk("h2","","自分の短冊に付いた返事"));
+  var any=false;
+  myStrips().forEach(function(p){
+    var rs=repliesFor(p.id);if(!rs.length)return;any=true;
+    var c=mk("div","thread");c.appendChild(mk("div","quote brush",p.text));
+    rs.forEach(function(r){
+      var d=replyLine(r);
+      if(r.author!==uid&&profiles[r.author])d.appendChild(plainBtn("この人の部屋を訪ねる",function(){visitRes(r.author);}));
+      c.appendChild(d);
+    });
+    box.appendChild(c);
+  });
+  box.appendChild(mk("p","hint",any?"返事に返すには、その人の部屋を訪ねて、その人の短冊に返事を書く。お茶を1杯使う。":"まだ返事は付いていない。"));
+}
+var postIn=el("post-in"),letIn=el("let-in");
+function left(){el("post-left").textContent="あと"+(POSTMAX-postIn.value.length)+"字";el("let-left").textContent="あと"+(LETMAX-letIn.value.length)+"字";}
+postIn.addEventListener("input",left);letIn.addEventListener("input",left);
+var posting=false;
+el("post-go").addEventListener("click",function(){
+  var t=clip(postIn.value,POSTMAX),st=el("post-status");
+  if(phase!=="in"||posting)return;
+  if(!t){st.textContent="まだ何も書かれていない。";return;}
+  posting=true;st.textContent="吊るしている…";
+  run(sb.from("strips").insert({owner:uid,body:t}).select("id,owner,body,created_at").single()).then(function(r){
+    posting=false;
+    if(r.error){st.textContent="吊るせなかった。"+errText(r.error);return;}
+    var a=sanStrips([r.data]);if(a.length)strips.unshift(a[0]);
+    postIn.value="";left();drawTL();drawRoom();st.textContent="短冊を吊るした。部屋の壁の短冊も書き換わった。";refresh();
+  });
+});
+
+/* ---- 訪ねる ---- */
+function resetMe(){me.x=me.fx=3;me.y=me.fy=5;me.dir=[0,-1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placeMe();placePet();}
+function placeHost(r){
+  host=null;var best=null,bd=99,cx,cy,d=[[1,0],[-1,0],[0,1],[0,-1]],i;
+  for(cy=0;cy<ROWS;cy++)for(cx=0;cx<COLS;cx++){
+    if(!walkable(cx,cy)||(cx===me.x&&cy===me.y)||(petKind&&cx===pet.x&&cy===pet.y))continue;
+    var dd=Math.abs(cx-5)+Math.abs(cy-2);if(dd<bd){bd=dd;best=[cx,cy];}
+  }
+  if(!best)return;
+  var L=r.look,pp=null;
+  if(r.pet)for(i=0;i<4;i++){var nx=best[0]+d[i][0],ny=best[1]+d[i][1];if(walkable(nx,ny)&&!(nx===me.x&&ny===me.y)){pp=[nx,ny];break;}}
+  host={x:best[0],y:best[1],name:r.name,px:makeChar(L),key:"__h"+L.hair+"-"+L.hc+"-"+L.k+"-"+L.o,pet:r.pet,pp:pp};
+}
+function visitRes(id){
+  if(phase!=="in"||me.moving||me.jumping)return;
+  var r=profiles[id];
+  if(!r||id===uid){note("その住民の部屋は、いまは見つからない。");return;}
+  note("");
+  if(where==="mine")home=room;
+  where="res";visitId=id;visitNm=r.name;visitCustom=[];host=null;
+  room=r.room.map(function(c){return c.slice();});
+  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");
+  resetMe();placeHost(r);
+  el("visit-bar").hidden=false;el("visit-name").textContent=r.name+"の部屋にいる";
+  show("room");drawReplies();drawRoom();
+  /* その人の自作の家具を読む */
+  run(sb.from("furniture").select("id,name,top,px").eq("owner",id).limit(MAXFURN)).then(function(f){
+    if(where!=="res"||visitId!==id)return;
+    if(f.error){setStatus("この部屋の自作の家具は読めなかった。");return;}
+    visitCustom=sanFurn(f.data,true);
+    if(!me.moving&&!me.jumping){var hx=host;host=null;placeMe();host=hx;}
+    drawRoom();
+  });
+}
+function goHome(){
+  if(where==="mine"||me.moving||me.jumping)return;
+  room=home||emptyRoom();home=null;where="mine";visitId=null;visitNm="";visitCustom=[];host=null;resetMe();
+  el("visit-bar").hidden=true;el("reply-panel").hidden=true;
+  drawRoom();count();hint();
+}
+el("go-home").addEventListener("click",goHome);
+var replying=false;
+function drawReplies(){
+  var panel=el("reply-panel");
+  if(where==="mine"){panel.hidden=true;return;}
+  /* 書きかけの返事は、描き直しても消さない */
+  var drafts={},focusK=null,act=document.activeElement;
+  Array.prototype.forEach.call(panel.querySelectorAll("input[data-k]"),function(i){drafts[i.getAttribute("data-k")]=i.value;if(i===act)focusK=i.getAttribute("data-k");});
+  panel.hidden=false;panel.textContent="";
+  panel.appendChild(mk("h2","",visitNm+"の短冊"));
+  var id=visitId,list=strips.filter(function(p){return p.owner===id;}).slice(0,30);
+  if(!list.length){panel.appendChild(mk("p","hint","この人はまだ短冊を吊るしていない。"));return;}
+  list.forEach(function(p){
+    var c=mk("div","thread");c.appendChild(mk("div","quote brush",p.text));
+    c.appendChild(mk("div","meta",when(p.t)));
+    repliesFor(p.id).forEach(function(r){
+      var d=replyLine(r);
+      if(r.author===uid)d.appendChild(plainBtn("自分の返事を消す",function(){
+        run(sb.from("replies").delete().eq("id",r.id)).then(function(x){
+          if(x.error){setStatus("消せなかった。"+errText(x.error));return;}
+          replies=replies.filter(function(y){return y.id!==r.id;});drawReplies();setStatus("自分の返事を消した。");loadTea();
+        });
+      }));
+      c.appendChild(d);
+    });
+    var inp=mk("input","brush write");inp.type="text";inp.maxLength=POSTMAX;inp.placeholder="返事を書く（80字まで）";inp.setAttribute("aria-label","返事");inp.setAttribute("data-k",p.id);
+    var b=mk("button","btn small","お茶を1杯払って返す");b.type="button";
+    b.addEventListener("click",function(){
+      var t=clip(inp.value,POSTMAX);
+      if(replying)return;
+      if(!t){setStatus("返事がまだ書かれていない。");return;}
+      if(tea!==null&&tea<=0){setStatus("今日のお茶はもうない。明日また"+TEAMAX+"杯もらえる。");return;}
+      replying=true;setStatus("返事を届けている…");
+      run(sb.from("replies").insert({strip_id:p.id,author:uid,body:t}).select("id,strip_id,author,body,created_at").single()).then(function(x){
+        replying=false;
+        if(x.error){
+          /* 4枚目はデータ側で断られる。残りを確かめてから伝える */
+          loadTea().then(function(){setStatus((tea!==null&&tea<=0)?"今日のお茶はもうない。明日また"+TEAMAX+"杯もらえる。":"返事を届けられなかった。"+errText(x.error));});
+          return;
+        }
+        var a=sanReplies([x.data]);if(a.length)replies.push(a[0]);
+        inp.value="";delete drafts[p.id];
+        if(tea!==null)tea=Math.max(0,tea-1);drawTea();drawReplies();
+        setStatus("返事を書いて、お茶を1杯置いた。"+(tea!==null?"今日のお茶はあと"+tea+"杯。":""));
+        loadTea();
+      });
+    });
+    c.appendChild(inp);c.appendChild(b);panel.appendChild(c);
+  });
+  Array.prototype.forEach.call(panel.querySelectorAll("input[data-k]"),function(i){var k=i.getAttribute("data-k");if(drafts[k])i.value=drafts[k];if(k===focusK)try{i.focus();}catch(e){}});
+}
+
+/* ---- 住民の一覧 ---- */
+function personRow(name,label,fn){
+  var r=mk("div","person");r.appendChild(mk("span","nm",name));
+  if(label){var b=mk("button","btn small",label);b.type="button";b.addEventListener("click",fn);r.appendChild(b);}
+  return r;
+}
+function drawPeople(){
+  var box=el("people");box.textContent="";
+  box.appendChild(mk("p","hint","自分の住民名："+myName));
+  var ids=otherIds();
+  if(!ids.length){box.appendChild(mk("p","hint","まだほかの住民はいない。"));return;}
+  ids.forEach(function(id){box.appendChild(personRow(profiles[id].name,"訪ねる",function(){visitRes(id);}));});
+}
+
+/* ---- 手紙：読めるのは、出した人と受け取った人だけ ---- */
+function drawLetTo(){
+  var sel=el("let-to"),cur=sel.value;sel.textContent="";
+  var ids=otherIds(),o=mk("option","",ids.length?"宛先を選ぶ":"まだほかの住民はいない");o.value="";sel.appendChild(o);
+  ids.forEach(function(id){var p=mk("option","",profiles[id].name);p.value=id;sel.appendChild(p);});
+  if(cur&&profiles[cur])sel.value=cur;
+}
+function loadLetters(){
+  if(phase!=="in")return;
+  run(sb.from("letters").select("id,sender,recipient,body,created_at").order("created_at",{ascending:false}).limit(200)).then(function(r){
+    if(r.error){el("let-status").textContent="文箱を読めなかった。"+errText(r.error);return;}
+    letters=sanLetters(r.data);drawLetters();
+  });
+}
+function drawLetters(){
+  var box=el("letters");box.textContent="";
+  function paper(l,head){
+    var p=mk("div","paper brush");p.appendChild(mk("div","to",head));p.appendChild(mk("div","",l.text));p.appendChild(mk("div","meta",when(l.t)));
+    var b=sure("破る",function(){
+      run(sb.from("letters").delete().eq("id",l.id)).then(function(r){
+        if(r.error){el("let-status").textContent="破れなかった。"+errText(r.error);return;}
+        letters=letters.filter(function(x){return x.id!==l.id;});drawLetters();el("let-status").textContent="手紙を破った。相手の文箱からも消える。";
+      });
+    },"tear");
+    p.appendChild(b);return p;
+  }
+  var inbox=letters.filter(function(l){return l.to===uid;}),sent=letters.filter(function(l){return l.from===uid&&l.to!==uid;});
+  box.appendChild(mk("h2","","届いた手紙"));
+  if(!inbox.length)box.appendChild(mk("p","hint","まだ届いていない。"));
+  inbox.forEach(function(l){box.appendChild(paper(l,nameOf(l.from)+" より"));});
+  box.appendChild(mk("h2","","出した手紙"));
+  if(!sent.length)box.appendChild(mk("p","hint","まだ出していない。"));
+  sent.forEach(function(l){box.appendChild(paper(l,nameOf(l.to)+" 様"));});
+}
+var mailing=false;
+el("let-go").addEventListener("click",function(){
+  var t=clip(letIn.value,LETMAX),st=el("let-status"),to=el("let-to").value;
+  if(phase!=="in"||mailing)return;
+  if(!to||!profiles[to]||to===uid){st.textContent="宛先の住民を選ぶ。";return;}
+  if(!t){st.textContent="まだ何も書かれていない。";return;}
+  mailing=true;st.textContent="封をしている…";
+  run(sb.from("letters").insert({sender:uid,recipient:to,body:t})).then(function(r){
+    mailing=false;
+    if(r.error){st.textContent="出せなかった。"+errText(r.error);return;}
+    letIn.value="";left();st.textContent=nameOf(to)+"に手紙を出した。読めるのは、自分と相手だけ。";loadLetters();
+  });
+});
+
+/* ---- 確認は画面の中で。2回押すと実行する ---- */
+function sure(label,fn,cls){
+  var b=mk("button",cls||"btn small",label),armed=0;b.type="button";
+  b.addEventListener("click",function(){
+    if(Date.now()-armed<5000){armed=0;b.textContent=label;fn();return;}
+    armed=Date.now();b.textContent="もう一度押す";
+    setTimeout(function(){if(armed){armed=0;b.textContent=label;}},5000);
+  });
+  return b;
+}
+
+/* ---- 通報：読めるのは管理人だけ ---- */
+var reporting=false;
+el("report-open").addEventListener("click",function(){
+  var p=el("report-panel");p.hidden=!p.hidden;
+  if(!p.hidden){
+    el("report-target").textContent=where==="res"?"知らせる相手："+visitNm+"（いま訪ねている部屋の主）":"どの住民の、どの短冊や家具のことかを書く。";
+    setLink(el("report-link"),okContact(cfg.reportUrl));
+    el("report-status").textContent="書いたものを読めるのは管理人だけ。";
+  }
+});
+el("report-go").addEventListener("click",function(){
+  var t=clip(el("report-in").value,LETMAX),st=el("report-status");
+  if(phase!=="in"||reporting)return;
+  if(!t){st.textContent="まだ何も書かれていない。";return;}
+  var target=where==="res"?clip("住民："+visitNm,TARGETMAX,true):"";
+  reporting=true;st.textContent="送っている…";
+  run(sb.from("reports").insert({reporter:uid,target:target,body:t})).then(function(r){
+    reporting=false;
+    if(r.error){st.textContent="送れなかった。"+errText(r.error);return;}
+    el("report-in").value="";st.textContent="管理人に送った。";
+  });
+});
+
+/* ---- 管理人の画面 ---- */
+var ad={members:[],invites:[],reports:[],open:null,furn:null,busy:false,filled:false,lastCode:""};
+function adSay(t){el("ad-status").textContent=t;}
+function adDo(q,msg){
+  if(!isAdmin)return;
+  if(ad.busy){adSay("前の操作が終わるまで待つ。");return;}
+  ad.busy=true;adSay("書き込んでいる…");
+  run(q()).then(function(r){
+    ad.busy=false;
+    if(r.error){adSay("できなかった。"+errText(r.error));return;}
+    adSay(msg);loadAdmin();refresh();
+  });
+}
+function newCode(){
+  var A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",b=new Uint8Array(20),s="";
+  crypto.getRandomValues(b);for(var i=0;i<b.length;i++)s+=A.charAt(b[i]%32);return s;
+}
+function loadAdmin(){
+  if(!isAdmin||phase!=="in")return;
+  Promise.all([
+    run(sb.from("members").select("user_id,admitted,paid_until,created_at").limit(1000)),
+    run(sb.from("invites").select("code,used_by,used_at,created_at").order("created_at",{ascending:false}).limit(300)),
+    run(sb.from("reports").select("id,reporter,target,body,created_at").order("created_at",{ascending:false}).limit(200))
+  ]).then(function(r){
+    if(r[0].error||r[1].error||r[2].error)adSay("一部を読めなかった。"+errText(r[0].error||r[1].error||r[2].error));
+    ad.members=rows(r[0].data).filter(function(m){return m&&isUuid(m.user_id);}).map(function(m){return {id:m.user_id.toLowerCase(),ok:m.admitted===true,paid:clip(m.paid_until,10,true)};});
+    ad.invites=rows(r[1].data).filter(function(v){return v&&typeof v.code==="string";}).map(function(v){return {code:clip(v.code,40,true),usedBy:isUuid(v.used_by)?v.used_by.toLowerCase():null,usedAt:timeOf(v.used_at)};});
+    ad.reports=rows(r[2].data).filter(function(v){return v&&isUuid(v.id);}).map(function(v){return {id:v.id,from:isUuid(v.reporter)?v.reporter.toLowerCase():"",target:clip(v.target,TARGETMAX,true),text:clip(v.body,LETMAX),t:timeOf(v.created_at)};});
+    drawAdmin();
+  });
+}
+function adLine(box,text,label,fn){var l=mk("div","line");l.appendChild(mk("span","",text));l.appendChild(sure(label,fn));box.appendChild(l);}
+function drawAdmin(){
+  if(!isAdmin)return;
+  if(!ad.filled){el("ad-url").value=cfg.payUrl;el("ad-fee").value=cfg.feeNote;el("ad-report").value=cfg.reportUrl;ad.filled=true;}
+  el("ad-code").textContent=ad.lastCode;el("ad-code-box").hidden=!ad.lastCode;
+  /* 招待コード */
+  var iv=el("ad-invites");iv.textContent="";
+  if(!ad.invites.length)iv.appendChild(mk("p","hint","招待コードはまだない。"));
+  ad.invites.forEach(function(v){
+    var l=mk("div","line"),c=mk("span","code",v.code);l.appendChild(c);
+    l.appendChild(mk("span","count",v.usedBy?"使用済み（"+nameOf(v.usedBy)+"）":"未使用"));
+    if(!v.usedBy)l.appendChild(sure("消す",function(){adDo(function(){return sb.from("invites").delete().eq("code",v.code);},"招待コードを消した。");}));
+    iv.appendChild(l);
+  });
+  /* 住民 */
+  var box=el("ad-list");box.textContent="";
+  var seen={},list=[];
+  ad.members.forEach(function(m){seen[m.id]=true;list.push({id:m.id,ok:m.ok,paid:m.paid,row:true});});
+  for(var pid in profiles)if(!seen[pid])list.push({id:pid,ok:false,paid:"",row:false});
+  if(!list.length)box.appendChild(mk("p","hint","まだ住民はいない。"));
+  list.forEach(function(m){
+    var p=profiles[m.id],row=mk("div","person wide"),nm=p?p.name:"（住民名なし）";
+    row.appendChild(mk("span","nm",nm+(m.id===uid?"（自分）":"")));
+    row.appendChild(mk("span","count",(m.ok?"入場中":"入場なし")+(m.paid?" "+m.paid+"まで":"")));
+    if(m.id!==uid&&m.row){
+      if(m.ok)row.appendChild(sure("入場を取り消す",function(){adDo(function(){return sb.from("members").update({admitted:false}).eq("user_id",m.id).select("user_id");},nm+"の入場を取り消した。");}));
+      else{var b=mk("button","btn small","入場を許す");b.type="button";b.addEventListener("click",function(){adDo(function(){return sb.from("members").update({admitted:true}).eq("user_id",m.id).select("user_id");},nm+"の入場を許した。");});row.appendChild(b);}
+    }
+    if(p&&m.id!==uid){
+      var t=mk("button","btn small",ad.open===m.id?"閉じる":"片づけ");t.type="button";
+      t.addEventListener("click",function(){
+        if(ad.open===m.id){ad.open=null;ad.furn=null;drawAdmin();return;}
+        ad.open=m.id;ad.furn=null;drawAdmin();
+        run(sb.from("furniture").select("id,name,top,px").eq("owner",m.id).limit(MAXFURN)).then(function(f){if(ad.open!==m.id)return;ad.furn={id:m.id,list:f.error?[]:sanFurn(f.data)};drawAdmin();});
+      });
+      row.appendChild(t);
+    }
+    if(ad.open===m.id&&p){
+      var sub=mk("div","sub"),hd=mk("div","actions");
+      hd.appendChild(sure("この住民の部屋を消す",function(){ad.open=null;adDo(function(){return sb.from("profiles").delete().eq("id",m.id);},nm+"の部屋を消した。");}));
+      sub.appendChild(hd);
+      var ss=strips.filter(function(x){return x.owner===m.id;}),rr=replies.filter(function(x){return x.author===m.id;});
+      sub.appendChild(mk("h2","","短冊 "+ss.length+"枚"));
+      ss.forEach(function(x){adLine(sub,x.text,"外す",function(){adDo(function(){return sb.from("strips").delete().eq("id",x.id);},"短冊を外した。");});});
+      sub.appendChild(mk("h2","","返事 "+rr.length+"枚"));
+      rr.forEach(function(x){adLine(sub,x.text,"消す",function(){adDo(function(){return sb.from("replies").delete().eq("id",x.id);},"返事を消した。");});});
+      var ff=(ad.furn&&ad.furn.id===m.id)?ad.furn.list:null;
+      sub.appendChild(mk("h2","",ff?"自作の家具 "+ff.length+"個":"自作の家具（読み込み中）"));
+      (ff||[]).forEach(function(f){
+        var l=mk("div","line"),cv=document.createElement("canvas");cv.width=N;cv.height=N;cv.style.width="48px";cv.style.height="48px";cv.style.background="#b9b27a";paint(cv.getContext("2d"),f.px,0,0);
+        l.appendChild(cv);l.appendChild(mk("span","",f.name));
+        l.appendChild(sure("捨てる",function(){ad.furn=null;adDo(function(){return sb.from("furniture").delete().eq("id",f.id);},"家具を捨てた。部屋に置いてあった分は描かれなくなる。");}));
+        sub.appendChild(l);
+      });
+      sub.appendChild(mk("p","hint","手紙は、出した人と受け取った人にしか読めない。管理人にも読めない。"));
+      row.appendChild(sub);
+    }
+    box.appendChild(row);
+  });
+  /* 通報 */
+  var rp=el("ad-reports");rp.textContent="";
+  if(!ad.reports.length)rp.appendChild(mk("p","hint","通報はない。"));
+  ad.reports.forEach(function(v){
+    var c=mk("div","thread");
+    c.appendChild(mk("div","meta",(v.from?nameOf(v.from):NONAME)+" より "+when(v.t)+(v.target?"　"+v.target:"")));
+    c.appendChild(mk("div","reply",v.text));
+    var a=mk("div","actions");a.appendChild(sure("消す",function(){adDo(function(){return sb.from("reports").delete().eq("id",v.id);},"通報を消した。");}));
+    c.appendChild(a);rp.appendChild(c);
+  });
+}
+el("ad-new").addEventListener("click",function(){
+  if(!isAdmin||ad.busy)return;
+  var code;try{code=newCode();}catch(e){adSay("この画面では乱数を作れなかった。");return;}
+  ad.busy=true;adSay("招待コードを作っている…");
+  run(sb.from("invites").insert({code:code,created_by:uid})).then(function(r){
+    ad.busy=false;
+    if(r.error){adSay("作れなかった。"+errText(r.error));return;}
+    ad.lastCode=code;adSay("招待コードを作った。1人に1つ渡す。1回使うと終わり。");loadAdmin();
+  });
+});
+el("ad-copy").addEventListener("click",function(){
+  var done=function(){adSay("招待コードを写した。");},fail=function(){adSay("写せなかった。コードを長押しして選んで写す。");};
+  try{navigator.clipboard.writeText(ad.lastCode).then(done,fail);}catch(e){fail();}
+});
+el("ad-save").addEventListener("click",function(){
+  if(!isAdmin)return;
+  var raw=el("ad-url").value.trim(),u=okUrl(raw),rraw=el("ad-report").value.trim(),ru=okContact(rraw),fee=clip(el("ad-fee").value,FEEMAX);
+  if(raw&&!u){adSay("支払いページは https:// で始まる正しい形で書く。");return;}
+  if(rraw&&!ru){adSay("連絡先は https:// か mailto: で始まる正しい形で書く。");return;}
+  if(ad.busy){adSay("前の操作が終わるまで待つ。");return;}
+  ad.busy=true;adSay("保存している…");
+  run(sb.from("config").update({pay_url:u||null,fee_note:fee||null,report_url:ru||null,updated_at:new Date().toISOString()}).eq("id",1).select("id")).then(function(r){
+    ad.busy=false;
+    if(r.error){adSay("保存できなかった。"+errText(r.error));return;}
+    if(!rows(r.data).length){adSay("保存できなかった。設定の行が見つからない。");return;}
+    cfg={payUrl:u,feeNote:fee,reportUrl:ru};adSay("設定を保存した。");
+  });
+});
+
+/* ---- 画面の切り替え ---- */
+var VIEWS=["room","post","letter","people","make","admin"],tabs={};
+VIEWS.forEach(function(k){tabs[k]=el("tab-"+k);});
+function syncScreen(){
+  var ins=phase==="in";
+  el("lobby").hidden=ins;
+  el("signin-form").hidden=phase!=="signin";el("invite-form").hidden=phase!=="invite";el("name-form").hidden=phase!=="naming";
+  el("retry").hidden=phase!=="error";
+  el("google-go").hidden=!ENABLE_GOOGLE;
+  el("tabs").hidden=!ins;tabs.admin.hidden=!isAdmin;
+  if(ins&&tabs[mode].hidden)mode="room";
+  VIEWS.forEach(function(k){el("view-"+k).hidden=!ins||k!==mode;tabs[k].setAttribute("aria-selected",String(k===mode));});
+  el("foot").hidden=!ins;
+  el("logout").hidden=!(uid&&phase!=="boot");
+  if(phase==="invite"){
+    el("invite-fee").textContent=cfg.feeNote||"料金の説明はまだ書かれていない。";
+    setLink(el("invite-pay"),cfg.payUrl);setLink(el("invite-report"),okContact(cfg.reportUrl));
+  }
+  if(!ins)el("report-panel").hidden=true;
+  drawTea();
+}
+function show(v){
+  mode=v;syncScreen();
+  if(phase!=="in")return;
+  if(mode==="make")drawBase();else if(mode==="room")hint();else if(mode==="people")drawPeople();
+  else if(mode==="letter"){if(!el("let-status").textContent)el("let-status").textContent="宛先を選んで書く。封をして、相手の文箱へ届く。";loadLetters();}
+  else if(mode==="admin"){drawAdmin();loadAdmin();}
+}
+Object.keys(tabs).forEach(function(k){tabs[k].addEventListener("click",function(){show(k);refresh();});});
+[["go-u",0,-1],["go-d",0,1],["go-l",-1,0],["go-r",1,0]].forEach(function(b){
+  el(b[0]).addEventListener("click",function(){step(b[1],b[2]);});});
+el("go-jump").addEventListener("click",jump);
+document.addEventListener("keydown",function(e){
+  if(mode!=="room"||phase!=="in")return;
+  var t=e.target&&e.target.tagName;if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT")return;
+  var m={ArrowLeft:[-1,0],ArrowUp:[0,-1],ArrowDown:[0,1],ArrowRight:[1,0]}[e.key];
+  if(m){e.preventDefault();step(m[0],m[1]);}
+  else if(e.key===" "&&t!=="BUTTON"&&t!=="A"){e.preventDefault();jump();}
+});
+function drawAll(){
+  syncScreen();if(phase!=="in")return;
+  count();left();drawTL();drawMyReplies();drawPeople();drawLetTo();
+  if(where!=="mine")drawReplies();if(mode==="admin")drawAdmin();if(mode==="letter")drawLetters();drawRoom();
+}
+
+/* ---- 入口：ログイン → 招待コード → 住民名 → 世界 ---- */
+var seq=0,authSeen=false;
+function resetWorld(){
+  clearTimeout(saveT);dirty=false;isAdmin=false;myName="";profiles=Object.create(null);strips=[];replies=[];letters=[];tea=null;custom=[];
+  where="mine";home=null;visitId=null;visitNm="";visitCustom=[];host=null;room=emptyRoom();mode="room";
+  ad={members:[],invites:[],reports:[],open:null,furn:null,busy:false,filled:false,lastCode:""};
+  el("visit-bar").hidden=true;el("reply-panel").hidden=true;note("");
+}
+function onAuth(session){
+  var id=(session&&session.user&&isUuid(session.user.id))?session.user.id.toLowerCase():null;
+  if(id===uid&&authSeen)return;
+  authSeen=true;uid=id;resetWorld();
+  if(!uid){seq++;phase="signin";syncScreen();if(!el("lobby-msg").getAttribute("data-keep"))setLobby("メールアドレスを入れると、入るためのリンクが届く。");el("lobby-msg").removeAttribute("data-keep");return;}
+  checkEntry();
+}
+function checkEntry(){
+  var my=++seq;phase="boot";syncScreen();setLobby("確かめている…");
+  var slow=setTimeout(function(){if(my===seq&&phase==="boot")setLobby("まだつながらない。つながったら、そのまま進む。");},10000);
+  Promise.all([
+    run(sb.from("members").select("admitted").eq("user_id",uid).maybeSingle()),
+    run(sb.from("admins").select("user_id").eq("user_id",uid).maybeSingle()),
+    run(sb.from("config").select("pay_url,fee_note,report_url").eq("id",1).maybeSingle())
+  ]).then(function(r){
+    clearTimeout(slow);if(my!==seq)return;
+    if(r[0].error){phase="error";syncScreen();setLobby("確かめられなかった。"+errText(r[0].error));return;}
+    isAdmin=!r[1].error&&!!r[1].data;cfg=sanCfg(r[2].error?null:r[2].data);
+    if(!(r[0].data&&r[0].data.admitted===true)){phase="invite";syncScreen();setLobby("ここは招待制。招待コードを入れると入れる。");return;}
+    loadMe(my);
+  });
+}
+function loadMe(my){
+  Promise.all([
+    run(sb.from("profiles").select("id,name,look,pet,room,joined_at").eq("id",uid).maybeSingle()),
+    run(sb.from("furniture").select("id,name,top,px").eq("owner",uid).limit(MAXFURN))
+  ]).then(function(r){
+    if(my!==seq)return;
+    if(r[0].error){phase="error";syncScreen();setLobby("部屋を読めなかった。"+errText(r[0].error));return;}
+    var p=sanProfile(r[0].data);
+    if(!p){phase="naming";syncScreen();setLobby("はじめに住民名を決める。決めると、自分の部屋ができる。");return;}
+    custom=r[1].error?[]:sanFurn(r[1].data);
+    if(r[1].error)note("自作の家具を読めなかった。"+errText(r[1].error));
+    enter(p);
+  });
+}
+function enter(p){
+  myName=p.name;look=p.look;petKind=p.pet;room=p.room;profiles[uid]=p;
+  phase="in";where="mine";home=null;host=null;CHAR=makeChar(look);
+  me.x=me.fx=2;me.y=me.fy=4;me.dir=[0,1];placeMe();placePet();
+  drawAll();show("room");drawRoom();refresh();
+}
+el("retry").addEventListener("click",function(){if(uid&&phase==="error")checkEntry();});
+var signing=false;
+el("signin-go").addEventListener("click",function(){
+  var mail=el("mail-in").value.trim();
+  if(phase!=="signin"||signing)return;
+  if(mail.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){setLobby("メールアドレスの形を確かめる。");return;}
+  signing=true;setLobby("メールを送っている…");
+  run(sb.auth.signInWithOtp({email:mail,options:{emailRedirectTo:location.origin+location.pathname}})).then(function(r){
+    signing=false;
+    setLobby(r.error?"メールを送れなかった。"+errText(r.error):"メールを送った。届いたリンクを、この端末で開くと入れる。");
+  });
+});
+el("mail-in").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();el("signin-go").click();}});
+el("google-go").addEventListener("click",function(){
+  if(!ENABLE_GOOGLE||phase!=="signin")return;
+  run(sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname}})).then(function(r){if(r.error)setLobby("Googleで入れなかった。"+errText(r.error));});
+});
+var redeeming=false;
+el("invite-go").addEventListener("click",function(){
+  var code=el("invite-in").value.replace(/\s+/g,"");
+  if(phase!=="invite"||redeeming)return;
+  if(code.length<8||code.length>40){setLobby("招待コードは8字から40字。");return;}
+  redeeming=true;setLobby("招待コードを確かめている…");
+  run(sb.rpc("redeem_invite",{p_code:code})).then(function(r){
+    redeeming=false;
+    if(r.error){setLobby("確かめられなかった。"+errText(r.error));return;}
+    if(r.data!==true){setLobby("この招待コードは使えない。打ちまちがいか、もう使われている。");return;}
+    el("invite-in").value="";checkEntry();
+  });
+});
+el("invite-in").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();el("invite-go").click();}});
+var naming=false;
+el("name-go").addEventListener("click",function(){
+  if(phase!=="naming"||naming)return;
+  var nm=clip(el("name-in").value,NAMEMAX,true),my=seq;
+  if(!nm){setLobby("住民名がまだ書かれていない。");return;}
+  naming=true;setLobby("部屋を用意している…");
+  var L=sanLook(null);
+  run(sb.from("profiles").insert({id:uid,name:nm,look:L,pet:1,room:encRoom(startRoom())}).select("id,name,look,pet,room,joined_at").single()).then(function(r){
+    naming=false;if(my!==seq)return;
+    if(r.error&&r.error.code==="23505"){checkEntry();return;}
+    var p=r.error?null:sanProfile(r.data);
+    if(!p){setLobby("部屋を作れなかった。"+(r.error?errText(r.error):""));return;}
+    enter(p);setStatus(p.name+"の部屋ができた。矢印で歩く。");
+  });
+});
+el("name-in").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();el("name-go").click();}});
+el("logout").addEventListener("click",function(){
+  if(!sb)return;
+  /* 保存待ちの部屋があれば、書き終えてから出る */
+  Promise.resolve(flushSave()).then(function(){
+    return run(sb.auth.signOut());
+  }).then(function(r){if(r.error){authSeen=false;onAuth(null);}});
+});
+
+/* ---- 始める ---- */
+room=emptyRoom();drawPal();drawEditor();left();syncScreen();
+(function(){
+  var lib=null;try{lib=window.supabase;}catch(e){}
+  if(!lib||typeof lib.createClient!=="function"){phase="nolib";syncScreen();setLobby("必要な部品を読み込めなかった。通信を確かめてから、ページを開き直す。");return;}
+  try{sb=lib.createClient(SB_URL,SB_KEY);}catch(e){phase="nolib";syncScreen();setLobby("つなぐ準備ができなかった。ページを開き直す。");return;}
+  /* リンクの期限切れなどは、戻ってきたURLに書かれている */
+  try{
+    var h=new URLSearchParams((location.hash||"").replace(/^#/,"")),s=new URLSearchParams(location.search||"");
+    if(h.get("error")||h.get("error_code")||s.get("error")||s.get("error_code")){setLobby("リンクが古いか、もう使われている。もう一度メールを送る。");el("lobby-msg").setAttribute("data-keep","1");}
+  }catch(e){}
+  var slow=setTimeout(function(){if(phase==="boot"&&!uid)setLobby("まだつながらない。つながったら、そのまま進む。");},10000);
+  /* この中では supabase を直接呼ばず、ひと呼吸おいてから進む */
+  try{sb.auth.onAuthStateChange(function(ev,session){setTimeout(function(){clearTimeout(slow);if(ev==="SIGNED_OUT")session=null;onAuth(session);},0);});}catch(e){}
+  run(sb.auth.getSession()).then(function(r){clearTimeout(slow);if(!authSeen)onAuth(r.data&&r.data.session);});
+})();
+try{document.fonts.load('14px "Yuji Syuku"',"短冊").then(function(){drawRoom();},function(){});}catch(e){}
+})();
+</script>
+</body>
+</html>
