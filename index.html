@@ -267,32 +267,32 @@ a.btn{display:block;text-decoration:none;text-align:center}
   </section>
 
   <section id="view-admin" hidden>
-    <p class="status" id="ad-status" aria-live="polite">招待・住民・設定・通報を扱う。</p>
+    <p class="status" id="kanri-status" aria-live="polite">招待・住民・設定・通報を扱う。</p>
     <h2>招待コード</h2>
-    <div class="actions"><button class="btn primary" id="ad-new">招待コードを作る</button></div>
-    <div class="block" id="ad-code-box" hidden>
-      <div class="codebox code" id="ad-code"></div>
-      <div class="actions"><button class="btn small" id="ad-copy">このコードを写す</button></div>
+    <div class="actions"><button class="btn primary" id="kanri-new">招待コードを作る</button></div>
+    <div class="block" id="kanri-code-box" hidden>
+      <div class="codebox code" id="kanri-code"></div>
+      <div class="actions"><button class="btn small" id="kanri-copy">このコードを写す</button></div>
     </div>
-    <div class="block" id="ad-invites"></div>
+    <div class="block" id="kanri-invites"></div>
     <h2>住民と入場</h2>
-    <div class="block" id="ad-list"></div>
+    <div class="block" id="kanri-list"></div>
     <h2>通報</h2>
-    <div class="block" id="ad-reports"></div>
+    <div class="block" id="kanri-reports"></div>
     <h2>設定</h2>
     <div class="field">
-      <label for="ad-url">支払いページのURL（https:// で始める）</label>
-      <input id="ad-url" type="text" maxlength="300" autocomplete="off">
+      <label for="kanri-url">支払いページのURL（https:// で始める）</label>
+      <input id="kanri-url" type="text" maxlength="300" autocomplete="off">
     </div>
     <div class="field">
-      <label for="ad-fee">料金の説明（400字まで）</label>
-      <textarea id="ad-fee" class="plain" maxlength="400" rows="3"></textarea>
+      <label for="kanri-fee">料金の説明（400字まで）</label>
+      <textarea id="kanri-fee" class="plain" maxlength="400" rows="3"></textarea>
     </div>
     <div class="field">
-      <label for="ad-report">外の連絡先（https:// か mailto: で始める。なくてもよい）</label>
-      <input id="ad-report" type="text" maxlength="300" autocomplete="off">
+      <label for="kanri-report">外の連絡先（https:// か mailto: で始める。なくてもよい）</label>
+      <input id="kanri-report" type="text" maxlength="300" autocomplete="off">
     </div>
-    <div class="actions"><button class="btn primary" id="ad-save">設定を保存</button></div>
+    <div class="actions"><button class="btn primary" id="kanri-save">設定を保存</button></div>
   </section>
 
   <div class="block" id="foot" hidden>
@@ -1141,7 +1141,7 @@ el("report-go").addEventListener("click",function(){
 
 /* ---- 管理人の画面 ---- */
 var ad={members:[],invites:[],reports:[],open:null,furn:null,busy:false,filled:false,lastCode:""};
-function adSay(t){el("ad-status").textContent=t;}
+function adSay(t){el("kanri-status").textContent=t;}
 function adDo(q,msg){
   if(!isAdmin)return;
   if(ad.busy){adSay("前の操作が終わるまで待つ。");return;}
@@ -1173,10 +1173,10 @@ function loadAdmin(){
 function adLine(box,text,label,fn){var l=mk("div","line");l.appendChild(mk("span","",text));l.appendChild(sure(label,fn));box.appendChild(l);}
 function drawAdmin(){
   if(!isAdmin)return;
-  if(!ad.filled){el("ad-url").value=cfg.payUrl;el("ad-fee").value=cfg.feeNote;el("ad-report").value=cfg.reportUrl;ad.filled=true;}
-  el("ad-code").textContent=ad.lastCode;el("ad-code-box").hidden=!ad.lastCode;
+  if(!ad.filled){el("kanri-url").value=cfg.payUrl;el("kanri-fee").value=cfg.feeNote;el("kanri-report").value=cfg.reportUrl;ad.filled=true;}
+  el("kanri-code").textContent=ad.lastCode;el("kanri-code-box").hidden=!ad.lastCode;
   /* 招待コード */
-  var iv=el("ad-invites");iv.textContent="";
+  var iv=el("kanri-invites");iv.textContent="";
   if(!ad.invites.length)iv.appendChild(mk("p","hint","招待コードはまだない。"));
   ad.invites.forEach(function(v){
     var l=mk("div","line"),c=mk("span","code",v.code);l.appendChild(c);
@@ -1185,7 +1185,7 @@ function drawAdmin(){
     iv.appendChild(l);
   });
   /* 住民 */
-  var box=el("ad-list");box.textContent="";
+  var box=el("kanri-list");box.textContent="";
   var seen={},list=[];
   ad.members.forEach(function(m){seen[m.id]=true;list.push({id:m.id,ok:m.ok,paid:m.paid,row:true});});
   for(var pid in profiles)if(!seen[pid])list.push({id:pid,ok:false,paid:"",row:false});
@@ -1230,7 +1230,7 @@ function drawAdmin(){
     box.appendChild(row);
   });
   /* 通報 */
-  var rp=el("ad-reports");rp.textContent="";
+  var rp=el("kanri-reports");rp.textContent="";
   if(!ad.reports.length)rp.appendChild(mk("p","hint","通報はない。"));
   ad.reports.forEach(function(v){
     var c=mk("div","thread");
@@ -1240,7 +1240,7 @@ function drawAdmin(){
     c.appendChild(a);rp.appendChild(c);
   });
 }
-el("ad-new").addEventListener("click",function(){
+el("kanri-new").addEventListener("click",function(){
   if(!isAdmin||ad.busy)return;
   var code;try{code=newCode();}catch(e){adSay("この画面では乱数を作れなかった。");return;}
   ad.busy=true;adSay("招待コードを作っている…");
@@ -1250,13 +1250,13 @@ el("ad-new").addEventListener("click",function(){
     ad.lastCode=code;adSay("招待コードを作った。1人に1つ渡す。1回使うと終わり。");loadAdmin();
   });
 });
-el("ad-copy").addEventListener("click",function(){
+el("kanri-copy").addEventListener("click",function(){
   var done=function(){adSay("招待コードを写した。");},fail=function(){adSay("写せなかった。コードを長押しして選んで写す。");};
   try{navigator.clipboard.writeText(ad.lastCode).then(done,fail);}catch(e){fail();}
 });
-el("ad-save").addEventListener("click",function(){
+el("kanri-save").addEventListener("click",function(){
   if(!isAdmin)return;
-  var raw=el("ad-url").value.trim(),u=okUrl(raw),rraw=el("ad-report").value.trim(),ru=okContact(rraw),fee=clip(el("ad-fee").value,FEEMAX);
+  var raw=el("kanri-url").value.trim(),u=okUrl(raw),rraw=el("kanri-report").value.trim(),ru=okContact(rraw),fee=clip(el("kanri-fee").value,FEEMAX);
   if(raw&&!u){adSay("支払いページは https:// で始まる正しい形で書く。");return;}
   if(rraw&&!ru){adSay("連絡先は https:// か mailto: で始まる正しい形で書く。");return;}
   if(ad.busy){adSay("前の操作が終わるまで待つ。");return;}
