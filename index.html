@@ -181,27 +181,38 @@ a.btn{display:block;text-decoration:none;text-align:center}
         <button class="btn small" id="clear-room">部屋の物を全部しまう</button>
       </div>
     </div>
-    <div class="block" id="dresser" hidden>
-      <div class="row"><h2>衣装台</h2><canvas id="look-pv" width="34" height="34"></canvas></div>
-      <div class="field"><span>髪型</span><div class="actions" id="opt-hair"></div></div>
-      <div class="field"><span>髪の色</span><div class="pal" id="opt-hc"></div></div>
-      <div class="field"><span>着物の色</span><div class="pal" id="opt-k"></div></div>
-      <div class="field"><span>帯の色</span><div class="pal" id="opt-o"></div></div>
-      <div class="field"><span>連れて歩く</span><div class="actions" id="opt-pet"></div></div>
-    </div>
     <div class="block" id="reply-panel" hidden></div>
   </section>
 
-  <section id="view-post" hidden>
+  <section id="view-dress" hidden>
+    <div class="row"><h2>衣装台</h2><button class="btn small" id="dress-back">部屋にもどる</button></div>
+    <div class="row"><canvas id="look-pv" width="34" height="34"></canvas><span class="hint">選ぶと、すぐ着替わる。</span></div>
+    <div class="field"><span>髪型</span><div class="actions" id="opt-hair"></div></div>
+    <div class="field"><span>髪の色</span><div class="pal" id="opt-hc"></div></div>
+    <div class="field"><span>着物の色</span><div class="pal" id="opt-k"></div></div>
+    <div class="field"><span>帯の色</span><div class="pal" id="opt-o"></div></div>
+    <div class="field"><span>連れて歩く</span><div class="actions" id="opt-pet"></div></div>
+  </section>
+
+  <section id="view-write" hidden>
+    <div class="row"><h2>壁の短冊</h2><button class="btn small" id="write-back">部屋にもどる</button></div>
+    <div class="block" id="write-now-box" hidden>
+      <span class="hint">いま壁にある短冊</span>
+      <p class="quote brush" id="write-now"></p>
+    </div>
     <div class="field">
-      <label for="post-in">短冊に書く（80字まで）</label>
+      <label for="post-in">新しい短冊（80字まで）</label>
       <textarea id="post-in" class="brush write" maxlength="80" rows="3" placeholder="いま思ったことを一言"></textarea>
     </div>
     <div class="row">
       <span class="count" id="post-left"></span>
       <button class="btn primary" id="post-go">短冊を吊るす</button>
     </div>
-    <p class="status" id="post-status" aria-live="polite">吊るした短冊は、右から新しい順に並ぶ。</p>
+    <p class="status" id="post-status" aria-live="polite">吊るすと、壁の短冊が書き換わる。みんなの短冊にも並ぶ。</p>
+  </section>
+
+  <section id="view-post" hidden>
+    <p class="hint">短冊は、自分の部屋の壁の短冊の前で、橙のボタンを押すと書ける。</p>
     <h2>みんなの短冊</h2>
     <div class="tl" id="tl"></div>
     <p class="hint" id="tl-hint"></p>
@@ -460,7 +471,7 @@ function drawRoom(){
     rx.fillStyle="#f4efe4";rx.fillText(host.name,hb[0],hy);
   }
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
-  if(!me.moving&&!me.jumping)syncDresser();
+  if(!me.moving&&!me.jumping)syncAct();
 }
 
 /* ---- 歩く ---- */
@@ -482,10 +493,10 @@ function step(dx,dy){
   if(me.moving||me.jumping)return;
   var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];
   var tx=me.x+dx,ty=me.y+dy;
-  if(tx<0||tx>=COLS||ty<0||ty>=ROWS){drawRoom();setStatus("そっちは壁。");return;}
+  if(tx<0||tx>=COLS||ty<0||ty>=ROWS){drawRoom();if(actTarget()!=="write")setStatus("そっちは壁。");return;}
   if(host&&host.x===tx&&host.y===ty){drawRoom();setStatus(host.name+"がいる。");return;}
   var tst=room[ty*COLS+tx];
-  if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus("「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
+  if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus(actTarget()==="dress"?"衣装台の前に立った。橙のボタンで着替えられる。拾うこともできる。":"「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
   var d=stackTop(ty*COLS+tx)-stackTop(me.y*COLS+me.x);
   if(d>14){drawRoom();setStatus("高すぎて登れない。低い家具なら跳び乗れる。");return;}
   if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();return;}
@@ -554,7 +565,7 @@ rc.addEventListener("click",function(e){
 var inv=document.getElementById("inv"),statusEl=document.getElementById("status"),discard=document.getElementById("discard"),baseEl=document.getElementById("base"),bagEl=document.getElementById("bag"),bagBtn=document.getElementById("bag-btn");
 function setStatus(t){statusEl.textContent=t;}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
-function hint(){setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳をなぞる。橙の印が目の前の畳。荷物から出した物はそこに置かれる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。");}
+function hint(){setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳をなぞる。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。");}
 function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
 function inRoom(p){return p[0]>=0&&p[0]<COLS&&p[1]>=0&&p[1]<ROWS;}
 function itemButton(it,fn){
@@ -607,10 +618,28 @@ function placePet(){
   for(var i=0;i<4;i++){var nx=me.x+d[i][0],ny=me.y+d[i][1];if(walkable(nx,ny)){pet.x=nx;pet.y=ny;break;}}
   pet.from=[pet.x,pet.y];pet.t0=0;
 }
-function syncDresser(){
-  var el=document.getElementById("dresser"),f=front(),on=where==="mine"&&inRoom(f)&&room[f[1]*COLS+f[0]].indexOf("p-ishoudai")>=0;
-  if(on&&el.hidden){el.hidden=false;drawDresser();setStatus("衣装台の前に立った。下で着替えられる。");}
-  else if(!on&&!el.hidden)el.hidden=true;
+/* 橙のボタン：衣装台や壁の短冊に向いていれば、それを使う。ほかは跳ぶ */
+var ACTS={jump:"跳ぶ",dress:"着替える",write:"短冊を書く"},actNow="jump";
+function actTarget(){
+  if(where!=="mine")return "jump";
+  var f=front();
+  if(inRoom(f)&&room[f[1]*COLS+f[0]].indexOf("p-ishoudai")>=0)return "dress";
+  /* 壁の短冊は奥の壁の左寄り（左から1〜4マス目の上） */
+  if(me.y===0&&me.dir[0]===0&&me.dir[1]===-1&&me.x>=0&&me.x<=3)return "write";
+  return "jump";
+}
+function syncAct(){
+  var a=actTarget();if(a===actNow)return;
+  actNow=a;el("go-jump").textContent=ACTS[a];
+  if(a==="dress")setStatus("衣装台の前に立った。橙のボタンで着替えられる。");
+  else if(a==="write")setStatus("壁の短冊の前に立った。橙のボタンで書ける。");
+}
+function act(){
+  if(me.moving||me.jumping)return;
+  var a=actTarget();
+  if(a==="dress"){show("dress");return;}
+  if(a==="write"){show("write");return;}
+  jump();
 }
 function swRow(id,list,cur,fn){var el=document.getElementById(id);el.textContent="";list.forEach(function(v){
   var b=document.createElement("button");b.type="button";b.className="sw";b.style.background=PAL[v];b.setAttribute("aria-label","色");b.setAttribute("aria-pressed",String(v===cur));
@@ -965,7 +994,7 @@ el("post-go").addEventListener("click",function(){
     posting=false;
     if(r.error){st.textContent="吊るせなかった。"+errText(r.error);return;}
     var a=sanStrips([r.data]);if(a.length)strips.unshift(a[0]);
-    postIn.value="";left();drawTL();drawRoom();st.textContent="短冊を吊るした。部屋の壁の短冊も書き換わった。";refresh();
+    postIn.value="";left();drawTL();show("room");setStatus("短冊を吊るした。壁の短冊が書き換わった。");refresh();
   });
 });
 
@@ -1288,8 +1317,11 @@ el("kanri-save").addEventListener("click",function(){
 });
 
 /* ---- 画面の切り替え ---- */
-var VIEWS=["room","post","letter","people","make","admin"],tabs={};
-VIEWS.forEach(function(k){tabs[k]=el("tab-"+k);});
+var VIEWS=["room","post","letter","people","make","admin","dress","write"],tabs={};
+/* 衣装台と短冊の画面は、部屋の中の画面。上のつまみは「部屋」のまま */
+var INROOM={dress:1,write:1};
+VIEWS.forEach(function(k){if(!INROOM[k])tabs[k]=el("tab-"+k);});
+function tabOf(k){return INROOM[k]?"room":k;}
 function syncScreen(){
   var ins=phase==="in";
   el("lobby").hidden=ins;
@@ -1297,8 +1329,8 @@ function syncScreen(){
   el("retry").hidden=phase!=="error";
   el("google-go").hidden=!ENABLE_GOOGLE;
   el("tabs").hidden=!ins;tabs.admin.hidden=!isAdmin;
-  if(ins&&tabs[mode].hidden)mode="room";
-  VIEWS.forEach(function(k){el("view-"+k).hidden=!ins||k!==mode;tabs[k].setAttribute("aria-selected",String(k===mode));});
+  if(ins&&(INROOM[mode]?where!=="mine":tabs[mode].hidden))mode="room";
+  VIEWS.forEach(function(k){el("view-"+k).hidden=!ins||k!==mode;if(tabs[k])tabs[k].setAttribute("aria-selected",String(k===tabOf(mode)));});
   el("foot").hidden=!ins;
   el("logout").hidden=!(uid&&phase!=="boot");
   if(phase==="invite"){
@@ -1311,22 +1343,27 @@ function syncScreen(){
 function show(v){
   mode=v;syncScreen();
   if(phase!=="in")return;
-  if(mode==="make")drawBase();else if(mode==="room")hint();else if(mode==="people")drawPeople();
+  if(mode==="make")drawBase();else if(mode==="room"){hint();actNow="";syncAct();}else if(mode==="people")drawPeople();
+  else if(mode==="dress")drawDresser();
+  else if(mode==="write"){var wt=wallText();el("write-now").textContent=wt;el("write-now-box").hidden=!wt;left();postIn.focus();}
   else if(mode==="letter"){if(!el("let-status").textContent)el("let-status").textContent="宛先を選んで書く。封をして、相手の文箱へ届く。";loadLetters();}
   else if(mode==="admin"){drawAdmin();loadAdmin();}
 }
 Object.keys(tabs).forEach(function(k){tabs[k].addEventListener("click",function(){show(k);refresh();});});
 [["go-u",0,-1],["go-d",0,1],["go-l",-1,0],["go-r",1,0]].forEach(function(b){
   el(b[0]).addEventListener("click",function(){step(b[1],b[2]);});});
-el("go-jump").addEventListener("click",jump);
+el("go-jump").addEventListener("click",act);
+el("dress-back").addEventListener("click",function(){show("room");});
+el("write-back").addEventListener("click",function(){show("room");});
 document.addEventListener("keydown",function(e){
+  if(INROOM[mode]&&phase==="in"&&e.key==="Escape"){e.preventDefault();show("room");return;}
   if(mode!=="room"||phase!=="in")return;
   var t=e.target&&e.target.tagName;if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT")return;
   var m={ArrowLeft:[-1,0],ArrowUp:[0,-1],ArrowDown:[0,1],ArrowRight:[1,0]}[e.key];
   /* WASD は日本語入力や配列に左右されないよう e.code で見る。Cmd+W などは横取りしない */
   if(!m&&!e.ctrlKey&&!e.metaKey&&!e.altKey)m={KeyA:[-1,0],KeyW:[0,-1],KeyS:[0,1],KeyD:[1,0]}[e.code];
   if(m){e.preventDefault();step(m[0],m[1]);}
-  else if(e.key===" "&&t!=="BUTTON"&&t!=="A"){e.preventDefault();jump();}
+  else if((e.key===" "||e.key==="Enter")&&t!=="BUTTON"&&t!=="A"){e.preventDefault();act();}
 });
 function drawAll(){
   syncScreen();if(phase!=="in")return;
