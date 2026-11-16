@@ -496,7 +496,7 @@ function step(dx,dy){
   var d=stackTop(ty*COLS+tx)-stackTop(me.y*COLS+me.x);
   if(d>14){drawRoom();setStatus("高すぎて登れない。低い家具なら跳び乗れる。");return;}
   liveMe(tx,ty);
-  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveTrack();return;}
+  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();return;}
   petFollow([me.x,me.y]);me.hop=d>4||d<-4;me.path=[[tx,ty]];me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();
   if(me.hop)setStatus(d>0?"跳び乗った。":"跳び降りた。");
   requestAnimationFrame(tick);
@@ -516,7 +516,7 @@ function walkTo(tx,ty){
   if(tx===me.x&&ty===me.y){setStatus("もうそこに立っている。");return;}
   if(!walkable(tx,ty)){setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
   var p=route(tx,ty);if(!p){setStatus("家具にふさがれて、そこまで歩けない。");return;}
-  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveMe(tx,ty);liveTrack();return;}
+  if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveMe(tx,ty);return;}
   me.dir=[p[0][0]-me.x,p[0][1]-me.y];liveMe(p[0][0],p[0][1]);
   petFollow([me.x,me.y]);me.path=p;me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();requestAnimationFrame(tick);
 }
@@ -524,7 +524,7 @@ function tick(now){
   var seg=me.path[0],k=(now-me.t0)/(me.hop?STEP*1.6:STEP);
   me.dir=[seg[0]-me.from[0],seg[1]-me.from[1]];
   if(k>=1){me.x=me.fx=seg[0];me.y=me.fy=seg[1];me.path.shift();me.from=[me.x,me.y];me.t0=now;me.k=0;
-    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();liveTrack();return;}
+    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();return;}
     me.dir=[me.path[0][0]-me.x,me.path[0][1]-me.y];liveMe(me.path[0][0],me.path[0][1]);
     petFollow([me.x,me.y]);
   }else{me.k=k;me.fx=me.from[0]+(seg[0]-me.from[0])*k;me.fy=me.from[1]+(seg[1]-me.from[1])*k;}
@@ -1042,7 +1042,7 @@ el("go-home").addEventListener("click",goHome);
 /* ---- 一緒にいる人：同じ部屋にいる住民の姿と歩く動きを、その場で見せる ----
    通り道は「room:部屋の持ち主の id」。鍵付き（private）で、入場している住民だけが入れる。
    流すのは位置と向きだけ。名前と見た目は、データベースの住民の表から読む。 */
-var live={ch:null,topic:"",others:Object.create(null),raf:0,since:0};
+var live={ch:null,topic:"",others:Object.create(null),raf:0,since:0,ok:false,hiT:0};
 function liveOwner(){return where==="mine"?uid:visitId;}
 function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<COLS&&y>=0&&y<ROWS;}
 function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
@@ -1057,30 +1057,35 @@ function liveJoin(){
   live.ch=ch;live.topic=topic;
   ch.on("presence",{event:"sync"},function(){if(live.ch===ch)liveSync();})
     .on("presence",{event:"join"},function(m){if(live.ch===ch)liveSay(m,"が来た。");})
+    .on("broadcast",{event:"hi"},function(){if(live.ch===ch)liveHello();})
     .on("presence",{event:"leave"},function(m){if(live.ch===ch)liveSay(m,"が出ていった。");})
     .on("broadcast",{event:"mv"},function(m){if(live.ch===ch)liveMove(m&&m.payload);})
     .on("broadcast",{event:"jp"},function(m){if(live.ch===ch)liveJump(m&&m.payload);});
-  var go=function(){if(live.ch!==ch)return;try{ch.subscribe(function(st){if(live.ch===ch&&st==="SUBSCRIBED"){live.since=performance.now();liveTrack();}});}catch(e){}};
+  var go=function(){if(live.ch!==ch)return;try{ch.subscribe(function(st){if(live.ch!==ch)return;live.ok=st==="SUBSCRIBED";if(live.ok){live.since=performance.now();liveTrack();liveSend("hi",{});}});}catch(e){}};
   /* ログインの鍵を通り道にも渡してからつなぐ */
   try{Promise.resolve(sb.realtime&&sb.realtime.setAuth?sb.realtime.setAuth():null).then(go,go);}catch(e){go();}
 }
 function liveLeave(){
-  var ch=live.ch;live.ch=null;live.topic="";live.others=Object.create(null);
+  var ch=live.ch;live.ch=null;live.topic="";live.ok=false;live.others=Object.create(null);
   if(ch){try{sb.removeChannel(ch);}catch(e){}}
 }
-function liveTrack(){if(live.ch){try{live.ch.track({x:me.x,y:me.y,dx:me.dir[0],dy:me.dir[1]});}catch(e){}}}
-function liveSend(ev,p){if(live.ch){try{live.ch.send({type:"broadcast",event:ev,payload:p});}catch(e){}}}
+/* 「今ここにいる」（presence）は、つないだときだけ出す。何度も出すと Supabase に通り道を切られる */
+function liveTrack(){if(live.ch&&live.ok){try{live.ch.track({x:me.x,y:me.y,dx:me.dir[0],dy:me.dir[1]});}catch(e){}}}
+/* 動きは broadcast で流す。つながっていないときは送らない（別の経路に回さない） */
+function liveSend(ev,p){if(live.ch&&live.ok){try{live.ch.send({type:"broadcast",event:ev,payload:p});}catch(e){}}}
+/* 新しくつないだ人から「hi」が来たら、今の自分の位置を知らせる */
+function liveHello(){clearTimeout(live.hiT);live.hiT=setTimeout(function(){liveMe(me.x,me.y);},300);}
 function liveMe(x,y){liveSend("mv",{id:uid,x:x,y:y,dx:me.dir[0],dy:me.dir[1]});}
 function liveSync(){
   var st;try{st=live.ch.presenceState();}catch(e){return;}
-  var next=Object.create(null),need=[],now=performance.now();
+  var next=Object.create(null),need=[];
   Object.keys(st||{}).slice(0,30).forEach(function(k){
     if(!isUuid(k))return;var id=k.toLowerCase();if(id===uid||next[id])return;
     var a=st[k],p=Array.isArray(a)&&a.length?a[a.length-1]:null;
     var ok=p&&typeof p==="object"&&okCell(p.x,p.y),o=live.others[id];
     if(!o){if(!ok)return;o={id:id,x:p.x,y:p.y,from:[p.x,p.y],t0:0,jt:0,dir:[0,1],px:null,key:""};}
-    else if(ok&&now-o.t0>STEP&&(o.x!==p.x||o.y!==p.y)){o.from=[o.x,o.y];o.x=p.x;o.y=p.y;o.t0=now;}
-    if(p&&okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
+    /* presence の位置は入ったときのもの。今の位置は broadcast の知らせで動かす */
+    if(!live.others[id]&&p&&okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
     next[id]=o;if(!profiles[id])need.push(id);
   });
   live.others=next;
