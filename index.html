@@ -483,12 +483,12 @@ function seatAt(x,y){if(where==="town")return benchAt(x,y);
 var sitCache=Object.create(null);
 function sitOf(key,px){if(sitCache[key])return sitCache[key];var g=new Array(N*N).fill(0);
   for(var y=0;y<25;y++)for(var x=0;x<N;x++){var v=px[y*N+x];if(v&&y+4<N)g[(y+4)*N+x]=v;}return sitCache[key]=g;}
-/* 立体で人と猫を立てるとき、切り絵をどれだけ下げるか（切り絵の画素で数える）。
-   切り絵は白い縁つきで 34×34。絵のいちばん下の行が y なら、縁の下端は y+3 の手前。そこが床（座っていれば座布団の上）に着くよう、34-(y+3) だけ下げる。
-   家具と街の飾りは、見下ろした絵の形に合わせた今までの 5 のまま（null を返す） */
+/* 立体で人・猫・家具を立てるとき、切り絵をどれだけ下げるか（切り絵の画素で数える）。
+   切り絵は白い縁つきで 34×34。絵のいちばん下の行が y なら、縁の下端は y+3 の手前。そこが床（物の上なら下の物の上）に着くよう、34-(y+3) だけ下げる。
+   街の飾り（植え込み・花・柳・桜）はここを通らず、地面に少し埋まった今までの 5 のまま */
 var footCache=Object.create(null);
 function footRows(key,px){
-  if(!/^__(me|h|pet)/.test(key)||!px)return null;
+  if(!px)return null;
   if(footCache[key]!=null)return footCache[key];
   var low=-1;for(var y=N-1;y>=0&&low<0;y--)for(var x=0;x<N;x++)if(px[y*N+x]){low=y;break;}
   return footCache[key]=low<0?5:Math.max(0,34-(low+3));
