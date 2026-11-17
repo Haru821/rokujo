@@ -856,11 +856,11 @@ function init3d(){
     }
   };
 }
-/* 一日のめぐり：日本時間で、朝・昼・夕方・夜と光が変わる（2026-11-17、はる） */
+/* 一日のめぐり：1時間で朝・昼・夕方・夜をひとめぐりする。時計の分で決めるので、全員に同じ時刻が見える（2026-11-17、はる） */
 var TOD={night:{skyT:[.003,.006,.02],skyH:[.016,.024,.06],sun:[.20,.26,.50],ambS:[.014,.017,.034],ambG:[.028,.022,.017],fog:[.016,.024,.05]},
   gold:{skyT:[.10,.13,.30],skyH:[.95,.48,.22],sun:[1.1,.62,.30],ambS:[.10,.09,.12],ambG:[.09,.06,.045],fog:[.36,.24,.20]},
   day:{skyT:[.16,.34,.78],skyH:[.58,.72,.90],sun:[1.35,1.25,1.08],ambS:[.20,.25,.33],ambG:[.16,.14,.11],fog:[.46,.55,.66]}};
-function jstHour(){var h=(Date.now()/3600000+9)%24;try{if(typeof window.__rokujoHour==="number")h=window.__rokujoHour;}catch(e){}return h;}
+function jstHour(){var h=(Date.now()%3600000)/3600000*24;try{if(typeof window.__rokujoHour==="number")h=window.__rokujoHour;}catch(e){}return h;}
 function timeOfDay(){
   var h=jstHour(),ss=function(a,b,x){var t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
   var wd=ss(6.3,8.5,h)*(1-ss(16,18,h)),bell=function(c){var d=(h-c)/1.2;return Math.exp(-d*d);};
@@ -870,10 +870,12 @@ function timeOfDay(){
   return o;
 }
 /* 立体のときは、決まった間隔で描き直す（行灯のゆらぎ）。部屋を見ていないときは描かない */
+var todT=0;
 function loop3(now){
   requestAnimationFrame(loop3);
   if(!R3||phase!=="in"||mode!=="room"||document.hidden)return;
   rx.setTransform(2,0,0,2,0,0);rx.clearRect(0,0,W,H);
+  if(now-todT>3000){todT=now;drawTea();}
   R3.begin();drawSprites();
   var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<gw()&&fy0>=0&&fy0<gh())?[fx0,fy0]:null;
   R3.render(now,mk);
