@@ -403,8 +403,17 @@ function find(id){var a=items();for(var i=0;i<a.length;i++)if(a[i].id===id)retur
 function paint(ctx,px,ox,oy){
   for(var i=0;i<N*N;i++){var c=px[i];if(!c)continue;ctx.fillStyle=PAL[c];ctx.fillRect(ox+(i%N),oy+Math.floor(i/N),1,1);}
 }
-function stackTop(k){var z=0;room[k].forEach(function(id){var it=find(id);if(it)z+=it.top||0;});return z;}
-function walkable(cx,cy){return cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&!(host&&host.x===cx&&host.y===cy)&&stackTop(cy*COLS+cx)<=4;}
+/* 街（川沿いの町）：1本の通りに12軒。1軒は横8マス、通りは縦4マス（2026-11-17、はる） */
+var HOUSES=12,TCOLS=HOUSES*8,TROWS=4,TOWN_ID="7a0d0000-0000-4000-8000-000000000001";
+function gw(){return where==="town"?TCOLS:COLS;}
+function gh(){return where==="town"?TROWS:ROWS;}
+/* 家は、入った順に1軒ずつ（住民の表の入った日時の順） */
+function houses(){var a=[];for(var id in profiles)if(profiles[id])a.push(id);
+  a.sort(function(x,y){return (profiles[x].joinedAt-profiles[y].joinedAt)||(x<y?-1:1);});return a.slice(0,HOUSES);}
+/* 通りの一番上の行で、戸（その家の左から4・5マス目）の方を向いていれば、その家の番号 */
+function doorAhead(){if(where!=="town"||me.y!==0||me.dir[0]!==0||me.dir[1]!==-1)return -1;var r=me.x%8;return (r===3||r===4)?Math.floor(me.x/8):-1;}
+function stackTop(k){if(where==="town")return 0;var z=0;room[k].forEach(function(id){var it=find(id);if(it)z+=it.top||0;});return z;}
+function walkable(cx,cy){if(where==="town")return cx>=0&&cx<TCOLS&&cy>=0&&cy<TROWS;return cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&!(host&&host.x===cx&&host.y===cy)&&stackTop(cy*COLS+cx)<=4;}
 
 /* ---- 部屋を描く ---- */
 var rc=document.getElementById("room"),rx=rc.getContext("2d");
@@ -439,6 +448,7 @@ function drawRoom(){
   rx.fillStyle="#15182b";rx.fillRect(0,0,W,H);
   var A=pr(0,ROWS),B=pr(COLS,ROWS),C=pr(COLS,0),D=pr(0,0),At=pr(0,ROWS,WH),Bt=pr(COLS,ROWS,WH),Ct=pr(COLS,0,WH),Dt=pr(0,0,WH);
   quad([A,D,Dt,At],"#b3a582");quad([B,C,Ct,Bt],"#c0b28f");quad([D,C,Ct,Dt],"#cdbf9f");
+  quad([pr(COLS,3,0),pr(COLS,5,0),pr(COLS,5,150),pr(COLS,3,150)],"#5a3a22");quad([pr(COLS,3.12,0),pr(COLS,4.88,0),pr(COLS,4.88,142),pr(COLS,3.12,142)],"#e9dcc0");
   bw(0.5,3.4,48,202,"#f4efe4");bw(0.42,3.48,202,208,"#5a3a22");bw(0.42,3.48,42,48,"#5a3a22");bw(0.6,0.8,56,72,"#c2452d");
   var txt=wallText().replace(/\s+/g,""),tr=pr(3.4,0,202),bl=pr(0.5,0,48),FS=14,PX=17,PY=16;
   var rowsN=Math.max(1,Math.floor((bl[1]-tr[1]-10)/PY)),colsN=Math.max(1,Math.floor((tr[0]-bl[0]-14)/PX));
@@ -473,8 +483,8 @@ function drawSprites(){
   var dr=me.y;
   if(me.moving&&me.path.length)dr=Math.max(me.from[1],me.path[0][1]);
   var pk=Math.min(1,(performance.now()-pet.t0)/STEP),pfx=pet.from[0]+(pet.x-pet.from[0])*pk,pfy=pet.from[1]+(pet.y-pet.from[1])*pk,prow=pk<1?Math.max(pet.from[1],pet.y):pet.y;
-  for(cy=0;cy<ROWS;cy++){
-    for(cx=0;cx<COLS;cx++){
+  for(cy=0;cy<gh();cy++){
+    for(cx=0;where!=="town"&&cx<COLS;cx++){
       var st=room[cy*COLS+cx],z=0;
       for(i=0;i<st.length;i++){var it=find(st[i]);if(!it)continue;if(!z&&i===0)shadow(cx+0.5,cy+0.82);stand(it.ck||it.id,it.px,cx+0.5,cy+0.82,z);z+=it.top||0;}
     }
@@ -540,6 +550,9 @@ function init3d(){
   "    emit+=vec3(1.,.7,.35)*.4*step(q.y,roof-.03)*step(.985,hash(floor(q*vec2(50.,30.))));alb=vec3(0.);}}",
   "else if(m==6){vec4 t=texture(uScroll,vU);alb=lin(t.rgb);}",
   "else if(m==8){alb=lin(vec3(.13,.08,.05));ks=.08;sh=30.;}",
+  "else if(m==10){vec2 q=vU;float fr=1.-smoothstep(.04,.06,min(min(q.x,1.-q.x),min(q.y,1.-q.y)));vec2 g=min(fract(q*vec2(2.,6.)),1.-fract(q*vec2(2.,6.)));",
+  "  float k=1.-smoothstep(.02,.04,min(g.x*.5,g.y/6.)*4.);float wood=max(max(fr,k),step(q.y,.18));",
+  "  alb=wood>.5?lin(vec3(.24,.15,.09)):lin(vec3(.86,.82,.70));if(wood<.5)emit=vec3(.03,.04,.08);}",
   "else{alb=lin(vec3(.06,.05,.05));}",
   "vec3 L;vec3 lc=lampAt(vP,L);vec3 V=normalize(uCam-vP);float a=ao(vP,N);",
   "vec3 c=alb*lc*max(dot(N,L),0.)+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*max(dot(N,L),0.);",
@@ -552,21 +565,52 @@ function init3d(){
   "if(uMode==2){P=uO+vec3(aC.x*uSz.x*.9,.002,(aC.y-.5)*uSz.x*.45);}",
   "if(uMode==3){P=uO+vec3(aC.x*uSz.x,.004,(aC.y-.5)*uSz.x);}",
   "vP=P;gl_Position=uVP*vec4(P,1.);}"].join("\n");
-  var SPR_FS="#version 300 es\n"+COMMON+"\nuniform sampler2D uTex;uniform int uMode;uniform float uGlow;uniform float uShadow;in vec2 vT;in vec3 vP;in vec2 vL;in float vFade;out vec4 o;\n"+[
+  var SPR_FS="#version 300 es\n"+COMMON+"\nuniform sampler2D uTex;uniform int uMode;uniform float uGlow;uniform float uShadow;uniform float uIn;uniform vec3 uFill;in vec2 vT;in vec3 vP;in vec2 vL;in float vFade;out vec4 o;\n"+[
   "void main(){",
   "if(uMode==3){vec2 q=vec2(vL.x+.5,vL.y);float e=min(min(q.x,1.-q.x),min(q.y,1.-q.y));if(e>.07||e<.02)discard;o=vec4(.94,.63,.24,.95);return;}",
   "if(uMode==2){float r=length(vec2(vL.x*2.,(vL.y-.5)*2.));float a=clamp(1.-r*r,0.,1.);o=vec4(0,0,0,a*a*.55);return;}",
   "vec4 t=texture(uTex,vT);if(t.a<.5)discard;",
   "if(uMode==1){o=vec4(0,0,0,uShadow*vFade);return;}",
   "vec3 alb=lin(t.rgb);vec3 N=vec3(0,0,1);vec3 L;vec3 lc=lampAt(vP,L);float nl=dot(N,L);",
-  "vec3 c=alb*lc*(max(nl,0.)*.9+.30*max(-nl,0.))+alb*vec3(.30,.40,.78)*.65*moonlit(vP)*.30+ambient(alb,N,1.)*1.5;",
+  "vec3 c=alb*lc*(max(nl,0.)*.9+.30*max(-nl,0.))+alb*vec3(.30,.40,.78)*.65*moonlit(vP)*.30*uIn+ambient(alb,N,1.)*1.5+alb*uFill;",
   /* 行灯の切り絵は、紙の黄色いところが光る */
   "if(uGlow>0.){float warm=step(.75,t.r)*step(t.b,.45);c+=alb*warm*uGlow*(.9+.1*sin(uTime*7.));}",
   "o=vec4(tone(c),1.);}"].join("\n");
   function shd(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
   function prog(vs,fs){var p=gl.createProgram();gl.attachShader(p,shd(gl.VERTEX_SHADER,vs));gl.attachShader(p,shd(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
     var u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(var i=0;i<n;i++){var nm=gl.getActiveUniform(p,i).name;u[nm]=gl.getUniformLocation(p,nm);}return {p:p,u:u};}
-  var PR,PS;try{PR=prog(ROOM_VS,ROOM_FS);PS=prog(SPR_VS,SPR_FS);}catch(e){return null;}
+  /* 街：石畳・家の表（板、格子、引き戸、表札、提灯）・瓦・石垣・川・夜空 */
+  var TOWN_FS="#version 300 es\n"+COMMON+"\nuniform vec3 uL[4];uniform vec3 uLc[4];uniform sampler2D uPlates;uniform float uMoonX;in vec3 vP;in vec3 vN;in vec2 vU;flat in float vMat;in float vSeed;out vec4 o;\n"+[
+  "void main(){int m=int(vMat+.5);vec3 N=normalize(vN);vec3 alb=vec3(.3);float ks=0.,sh=20.;vec3 emit=vec3(0.);float lit=step(100.,vSeed);",
+  "if(m==20){vec2 q=vP.xz/vec2(.42,.30);q.x+=.5*mod(floor(q.y),2.);vec2 id=floor(q),f=fract(q);float e=min(min(f.x,1.-f.x)*.42,min(f.y,1.-f.y)*.30);float mo=1.-smoothstep(.004,.012,e);",
+  "  alb=lin(vec3(.40,.39,.37))*(.65+.5*hash(id))*(.85+.3*fbm(vP.xz*9.));alb=mix(alb,lin(vec3(.07,.06,.06)),mo);ks=.35*(1.-mo);sh=60.;}",
+  "else if(m==21){float b=fract(vP.x/.14);alb=lin(vec3(.17,.11,.08))*(.75+.35*fbm(vec2(vP.x*30.,vP.y*2.)))*(1.-.4*(1.-smoothstep(0.,.06,min(b,1.-b))));ks=.05;}",
+  "else if(m==22){float fb=fract(vP.x/.085),aw=fwidth(vP.x/.085);float bar=smoothstep(.45-aw,.45+aw,fb)*(1.-smoothstep(.97-aw,.97+aw,fb));bar=step(.5,bar);alb=bar>.5?lin(vec3(.20,.13,.08)):vec3(0.);emit=(1.-bar)*vec3(1.,.55,.22)*(.04+.5*lit)*(.7+.3*noise(vP.xy*3.+vSeed));ks=.05;}",
+  "else if(m==23){vec2 q=vU;float fr=1.-smoothstep(.03,.05,min(min(q.x,1.-q.x),min(q.y,1.-q.y)));vec2 g=min(fract(q*vec2(2.,5.)),1.-fract(q*vec2(2.,5.)));",
+  "  float k=1.-smoothstep(.02,.04,min(g.x*.5,g.y*.2)*5.);float wood=max(max(fr,k),step(q.y,.22));",
+  "  alb=wood>.5?lin(vec3(.22,.14,.09)):lin(vec3(.88,.84,.72));if(wood<.5)emit=vec3(1.,.6,.28)*(.06+.55*lit);}",
+  "else if(m==24){float r=fract(vU.y/.11);float c=fract(vU.x/.22);alb=lin(vec3(.22,.24,.28))*(.55+.45*smoothstep(0.,.8,r))*(.8+.4*smoothstep(.0,.15,min(c,1.-c)));ks=.25;sh=30.;}",
+  "else if(m==25){alb=lin(vec3(.24,.15,.09))*(.8+.3*fbm(vP.xy*vec2(3.,20.)));ks=.06;}",
+  "else if(m==26){alb=lin(vec3(.80,.78,.72))*(.85+.2*fbm(vP.xy*20.));}",
+  "else if(m==27){vec4 t=texture(uPlates,vec2((mod(vSeed,100.)+vU.x)/12.,vU.y));alb=lin(t.rgb);}",
+  "else if(m==28){float rib=.75+.25*smoothstep(.0,.3,abs(fract(vU.y*6.)-.5));emit=vec3(1.,.30,.12)*.55*rib;alb=vec3(0.);}",
+  "else if(m==29){float row=floor(vP.y/.2+vP.z*5.);vec2 q=vec2(vP.x/.38+.5*mod(row,2.),vP.y/.2+vP.z*5.);vec2 f=fract(q);float e=min(min(f.x,1.-f.x),min(f.y,1.-f.y));",
+  "  alb=lin(vec3(.33,.32,.30))*(.6+.5*hash(floor(q)))*(1.-.7*(1.-smoothstep(.02,.06,e)));}",
+  "else if(m==30){alb=lin(vec3(.01,.015,.03));ks=.6;sh=80.;",
+  "  float rip=noise(vec2(vP.x*3.,vP.z*9.-uTime*.6))*.6+noise(vec2(vP.x*7.+uTime*.3,vP.z*20.))*.4;",
+  "  emit=vec3(.55,.58,.70)*.5*exp(-abs(vP.x-uMoonX)*1.6)*smoothstep(.45,.75,rip);",
+  "  for(int i=0;i<4;i++){emit+=uLc[i]*.9*exp(-abs(vP.x-uL[i].x)*5.)*smoothstep(.5,.8,rip)*exp(-(vP.z-2.)*.3);}}",
+  "else if(m==31){float h=vP.y;vec3 sky=mix(vec3(.012,.017,.045),vec3(.003,.005,.018),smoothstep(2.,9.,h));",
+  "  float d=length(vec2(vP.x-uMoonX,h-5.2));emit=sky+vec3(1.,.95,.82)*(smoothstep(.40,.36,d)*2.2+.10*exp(-d*1.2));",
+  "  emit+=vec3(.9,.9,1.)*step(.996,hash(floor(vP.xy*6.)))*.3*smoothstep(3.8,5.,h);",
+  "  float mtn=3.15+.55*noise(vec2(vP.x*.18,1.))+.25*noise(vec2(vP.x*.6,2.));if(h<mtn)emit=vec3(.006,.008,.016)+vec3(1.,.7,.35)*.5*step(.994,hash(floor(vP.xy*vec2(5.,9.))))*step(h,mtn-.15);",
+  "  alb=vec3(0.);}",
+  "vec3 V=normalize(uCam-vP);vec3 c=vec3(0.);",
+  "for(int i=0;i<4;i++){vec3 d=uL[i]-vP;float d2=dot(d,d);vec3 L=d*inversesqrt(d2);float nl=max(dot(N,L),0.);vec3 lc=uLc[i]/(d2+.08);",
+  "  c+=alb*lc*nl+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*nl;}",
+  "c+=alb*vec3(.10,.13,.24)*(.25+.75*max(dot(N,normalize(vec3(-.3,.75,.6))),0.));",
+  "c+=emit;o=vec4(tone(c),1.);}"].join("\n");
+  var PR,PS,PT;try{PR=prog(ROOM_VS,ROOM_FS);PS=prog(SPR_VS,SPR_FS);PT=prog(ROOM_VS,TOWN_FS);}catch(e){return null;}
   /* 部屋の形：位置3・向き3・模様の座標2・材質2 */
   var V=[];
   function quad(a,b,c,d,n,ua,ub,uc,ud,m,seed){[a,b,c,a,c,d].forEach(function(p,i){var uv=[ua,ub,uc,ua,uc,ud][i];V.push(p[0],p[1],p[2],n[0],n[1],n[2],uv[0],uv[1],m,seed||0);});}
@@ -595,9 +639,39 @@ function init3d(){
   var SX0=.24,SX1=1.52,SY0=.52,SY1=1.74;
   quad([SX0,SY0,.006],[SX1,SY0,.006],[SX1,SY1,.006],[SX0,SY1,.006],[0,0,1],[0,1],[1,1],[1,0],[0,0],6);
   box(SX0-.04,SY1-.03,.004,SX1+.04,SY1+.02,.03,8,"ZYy");box(SX0-.04,SY0-.02,.004,SX1+.04,SY0+.03,.03,8,"ZYy");
+  /* 部屋の出口：右の壁の手前寄り（手前から2・3マス目）の引き戸 */
+  quad([RW-.004,0,5*CELL],[RW-.004,0,3*CELL],[RW-.004,1.8,3*CELL],[RW-.004,1.8,5*CELL],[-1,0,0],[0,0],[1,0],[1,1],[0,1],10);
+  box(RW-.05,1.8,3*CELL-.04,RW,1.86,5*CELL+.04,8,"xy");box(RW-.05,0,3*CELL-.06,RW,1.8,3*CELL,8,"xZ");box(RW-.05,0,5*CELL,RW,1.8,5*CELL+.06,8,"xz");
   var roomN=V.length/10;
   var vaoR=gl.createVertexArray();gl.bindVertexArray(vaoR);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
   [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
+  /* 街の形。1軒は 3.6m（8マス）、通りの奥行きは 1.8m（4マス）。家の表は z=0、川は手前 */
+  var TW=HOUSES*3.6,LANE=TROWS*CELL;V=[];
+  quad([-.3,0,LANE],[TW+.3,0,LANE],[TW+.3,0,0],[-.3,0,0],[0,1,0],[0,0],[0,0],[0,0],[0,0],20);
+  box(-.3,0,LANE,TW+.3,.07,LANE+.12,29,"YZ");
+  quad([-.3,-.7,LANE+.12],[TW+.3,-.7,LANE+.12],[TW+.3,0,LANE+.12],[-.3,0,LANE+.12],[0,0,1],[0,0],[0,0],[0,0],[0,0],29);
+  quad([-30,-.7,40],[TW+30,-.7,40],[TW+30,-.7,LANE+.12],[-30,-.7,LANE+.12],[0,1,0],[0,0],[0,0],[0,0],[0,0],30);
+  box(-.6,0,-.2,-.3,1.5,LANE+.12,25);box(TW+.3,0,-.2,TW+.6,1.5,LANE+.12,25);
+  quad([-30,-1,-9],[-30,16,-9],[TW+30,16,-9],[TW+30,-1,-9],[0,0,1],[0,0],[0,0],[0,0],[0,0],31);
+  var LANTS=[];
+  for(var hi=0;hi<HOUSES;hi++){var x0=hi*3.6,sd=100+hi;
+    quad([x0,0,0],[x0,1.95,0],[x0+3.6,1.95,0],[x0+3.6,0,0],[0,0,1],[0,0],[0,0],[0,0],[0,0],21,hi);
+    quad([x0+.22,.5,.003],[x0+1.22,.5,.003],[x0+1.22,1.55,.003],[x0+.22,1.55,.003],[0,0,1],[0,0],[1,0],[1,1],[0,1],22,sd);
+    quad([x0+2.42,.5,.003],[x0+3.42,.5,.003],[x0+3.42,1.55,.003],[x0+2.42,1.55,.003],[0,0,1],[0,0],[1,0],[1,1],[0,1],22,sd);
+    quad([x0+1.37,0,.004],[x0+2.23,0,.004],[x0+2.23,1.74,.004],[x0+1.37,1.74,.004],[0,0,1],[0,0],[1,0],[1,1],[0,1],23,sd);
+    quad([x0+2.27,1.0,.008],[x0+2.39,1.0,.008],[x0+2.39,1.46,.008],[x0+2.27,1.46,.008],[0,0,1],[0,0],[1,0],[1,1],[0,1],27,sd);
+    box(x0,0,-.05,x0+.1,1.95,.08,25,"xXZ");box(x0+3.5,0,-.05,x0+3.6,1.95,.08,25,"xXZ");
+    box(x0,1.92,0,x0+3.6,1.97,.66,25,"yZ");
+    quad([x0,1.97,.66],[x0+3.6,1.97,.66],[x0+3.6,2.2,-.02],[x0,2.2,-.02],[0,.95,.3],[0,0],[3.6,0],[3.6,.72],[0,.72],24);
+    quad([x0,2.0,-.35],[x0+3.6,2.0,-.35],[x0+3.6,2.78,-.35],[x0,2.78,-.35],[0,0,1],[0,0],[0,0],[0,0],[0,0],26,hi);
+    quad([x0+1.4,2.15,-.345],[x0+2.2,2.15,-.345],[x0+2.2,2.6,-.345],[x0+1.4,2.6,-.345],[0,0,1],[0,0],[1,0],[1,1],[0,1],22,sd);
+    quad([x0-.05,2.78,-.2],[x0+3.65,2.78,-.2],[x0+3.65,3.55,-2.4],[x0-.05,3.55,-2.4],[0,.94,.34],[0,0],[3.7,0],[3.7,2.33],[0,2.33],24);
+    var lx=x0+2.78;box(lx-.1,1.32,.22,lx+.1,1.62,.42,28);box(lx-.07,1.62,.25,lx+.07,1.66,.39,25);box(lx-.07,1.28,.25,lx+.07,1.32,.39,25);box(lx-.008,1.66,.31,lx+.008,1.93,.33,25);
+    LANTS.push([lx,1.47,.32]);}
+  var townN=V.length/10;
+  var vaoT=gl.createVertexArray();gl.bindVertexArray(vaoT);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
+  [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
+  V=[];
   var vaoS=gl.createVertexArray();gl.bindVertexArray(vaoS);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-.5,0,.5,0,.5,1,-.5,0,.5,1,-.5,1]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,8,0);
   gl.bindVertexArray(null);
@@ -621,15 +695,29 @@ function init3d(){
     g.fillStyle="#c2452d";g.fillRect(36,250,14,14);
     gl.bindTexture(gl.TEXTURE_2D,scT);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,sc);}
   try{document.fonts.load('26px "Yuji Syuku"',"短冊").then(function(){scText=null;},function(){});}catch(e){}
-  /* 見る位置は固定（2Dの部屋とほぼ同じ向き） */
-  var FOV=.68,tgt=[RW/2,.62,1.25],camP=[RW/2,1.85,1.25+4.45];
+  /* 表札：住民名を筆の字で縦に。12軒分を1枚に並べる */
+  var pc=document.createElement("canvas");pc.width=12*48;pc.height=176;var plT=mkTex(pc,false),plKey=null;
+  function drawPlates(ids){var g=pc.getContext("2d");g.clearRect(0,0,pc.width,pc.height);
+    for(var i=0;i<HOUSES;i++){var x=i*48;g.fillStyle="#8a6a46";g.fillRect(x,0,48,176);g.fillStyle="#c9a77a";g.fillRect(x+4,4,40,168);
+      var nm=ids[i]?Array.from(nameOf(ids[i])).slice(0,6):[];g.fillStyle="#1b1622";g.font='24px "Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif';g.textAlign="center";g.textBaseline="middle";
+      nm.forEach(function(ch,j){g.fillText(ch,x+24,20+j*27);});}
+    gl.bindTexture(gl.TEXTURE_2D,plT);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,pc);}
+  try{document.fonts.load('24px "Yuji Syuku"',"表札").then(function(){plKey=null;},function(){});}catch(e){}
+  /* 柳：紙の切り絵。家と家のあいだに立てる */
+  var YANAGI=art(function(R){R(14,15,4,15,4);R(15,12,2,4,5);R(8,3,16,5,11);R(6,5,20,3,10);
+    for(var i=0;i<11;i++){R(5+i*2,7,1,9+((i*7)%10),i%2?10:11);R(6+i*2,8,1,7+((i*5)%8),i%3?11:10);}});
+  var FOV=.68,PROJ,tgt,camP,fz,fx,fy,VP;
   function persp(f,a,n,fa){var t=1/Math.tan(f/2);return [t/a,0,0,0,0,t,0,0,0,0,(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0];}
   function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
   function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}function norm(a){var l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];}
-  var fz=norm(sub(camP,tgt)),fx=norm(cross([0,1,0],fz)),fy=cross(fz,fx);
-  var VIEW=[fx[0],fy[0],fz[0],0,fx[1],fy[1],fz[1],0,fx[2],fy[2],fz[2],0,-dot(fx,camP),-dot(fy,camP),-dot(fz,camP),1];
+
   function mul(a,b){var o=new Array(16);for(var i=0;i<4;i++)for(var j=0;j<4;j++){var s=0;for(var k=0;k<4;k++)s+=a[k*4+j]*b[i*4+k];o[i*4+j]=s;}return o;}
-  var PROJ=persp(FOV,W/H,.1,30),VP=mul(PROJ,VIEW);
+  function setCam(c,t,f){camP=c;tgt=t;FOV=f;PROJ=persp(FOV,W/H,.1,60);fz=norm(sub(camP,tgt));fx=norm(cross([0,1,0],fz));fy=cross(fz,fx);
+    VP=mul(PROJ,[fx[0],fy[0],fz[0],0,fx[1],fy[1],fz[1],0,fx[2],fy[2],fz[2],0,-dot(fx,camP),-dot(fy,camP),-dot(fz,camP),1]);}
+  /* 部屋は固定の向き。街は自分を追って横へ動く */
+  function roomCam(){setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
+  function townCam(){var cx=Math.max(2.4,Math.min(TW-2.4,(me.fx+.5)*CELL));setCam([cx,2.45,5.9],[cx,.6,.4],.78);return cx;}
+  roomCam();
   function clip(p){var x=p[0],y=p[1],z=p[2];return [VP[0]*x+VP[4]*y+VP[8]*z+VP[12],VP[1]*x+VP[5]*y+VP[9]*z+VP[13],VP[3]*x+VP[7]*y+VP[11]*z+VP[15]];}
   var list=[],blobs=[],collecting=false;
   return {
@@ -642,35 +730,51 @@ function init3d(){
     blob:function(X,Z){blobs.push([X*CELL,Z*CELL]);},
     /* 触った所から床をたどって、どのマスか。部屋の外なら壁の短冊を触ったかを返す */
     pick:function(px,py){var nx=px/W*2-1,ny=1-py/H*2,t=Math.tan(FOV/2),d=norm([-fz[0]+nx*t*W/H*fx[0]+ny*t*fy[0],-fz[1]+nx*t*W/H*fx[1]+ny*t*fy[1],-fz[2]+nx*t*W/H*fx[2]+ny*t*fy[2]]);
-      if(d[1]<0){var k=-camP[1]/d[1],x=camP[0]+d[0]*k,z=camP[2]+d[2]*k;if(x>=0&&x<RW&&z>=0&&z<RD)return {cell:[Math.floor(x/CELL),Math.floor(z/CELL)]};}
-      if(d[2]<0){var k2=-camP[2]/d[2],wx=camP[0]+d[0]*k2,wy=camP[1]+d[1]*k2;if(wx>=SX0&&wx<=SX1&&wy>=SY0&&wy<=SY1)return {wall:true};}
+      var GW=gw()*CELL,GD=gh()*CELL;
+      if(d[1]<0){var k=-camP[1]/d[1],x=camP[0]+d[0]*k,z=camP[2]+d[2]*k;if(x>=0&&x<GW&&z>=0&&z<GD)return {cell:[Math.floor(x/CELL),Math.floor(z/CELL)]};}
+      if(where!=="town"&&d[2]<0){var k2=-camP[2]/d[2],wx=camP[0]+d[0]*k2,wy=camP[1]+d[1]*k2;if(wx>=SX0&&wx<=SX1&&wy>=SY0&&wy<=SY1)return {wall:true};}
       return null;},
     render:function(now,marker){
       collecting=false;
       var dpr=Math.min(window.devicePixelRatio||1,1.5),w=Math.max(1,Math.round(cv.clientWidth*dpr)),h=Math.max(1,Math.round(cv.clientHeight*dpr));
       if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
-      var wt=wallText();if(wt!==scText){scText=wt;drawScroll(wt);}
-      /* 明かり：部屋の行灯（いちばん手前のもの）。なければ天井の弱い明かり */
-      var lamp=null,lampGlow=null,i;
-      for(i=0;i<list.length;i++)if(list[i].k==="p-andon"&&(!lamp||list[i].z>lamp[2])){lamp=[list[i].x,list[i].y+11*S3+.04,list[i].z+.03];lampGlow=list[i];}
-      var fl=reduce?1:(.92+.05*Math.sin(now*.0071)+.03*Math.sin(now*.0233+1.3)),lc=lamp?[.62*fl,.36*fl,.16*fl]:[.30,.24,.17];
-      if(!lamp)lamp=[RW/2,2.1,RD/2];
-      var shadowA=lampGlow?.62:.0;
-      function set(P){gl.uniformMatrix4fv(P.u.uVP,false,VP);gl.uniform3fv(P.u.uLamp,lamp);gl.uniform3fv(P.u.uLampCol,lc);gl.uniform3fv(P.u.uCam,camP);
+      var fl=reduce?1:(.92+.05*Math.sin(now*.0071)+.03*Math.sin(now*.0233+1.3)),i;
+      function base(P,lamp,lc){gl.uniformMatrix4fv(P.u.uVP,false,VP);gl.uniform3fv(P.u.uLamp,lamp);gl.uniform3fv(P.u.uLampCol,lc);gl.uniform3fv(P.u.uCam,camP);
         gl.uniform1f(P.u.uTime,reduce?0:now/1000);gl.uniform2f(P.u.uRes,cv.width,cv.height);}
       gl.viewport(0,0,cv.width,cv.height);gl.clearColor(.02,.024,.045,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
       gl.enable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);
-      gl.useProgram(PR.p);set(PR);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,scT);gl.uniform1i(PR.u.uScroll,0);
-      gl.bindVertexArray(vaoR);gl.drawArrays(gl.TRIANGLES,0,roomN);
-      gl.disable(gl.CULL_FACE);gl.useProgram(PS.p);set(PS);gl.uniform1i(PS.u.uTex,0);gl.uniform1f(PS.u.uShadow,shadowA);gl.bindVertexArray(vaoS);
-      var SZ=34*S3;
-      function one(s,mode){gl.bindTexture(gl.TEXTURE_2D,spriteTex(s.k,s.px));gl.uniform3f(PS.u.uO,s.x,s.y-5*S3,s.z);gl.uniform2f(PS.u.uSz,SZ,SZ);gl.uniform1i(PS.u.uMode,mode);
-        gl.uniform1f(PS.u.uGlow,mode===0&&s===lampGlow?1.6:0);gl.drawArrays(gl.TRIANGLES,0,6);}
-      list.forEach(function(s){one(s,0);});
+      var SZ=34*S3,lampOf,glowOne=null,shadowA,town=where==="town";
+      if(town){
+        var cx=townCam(),hs=houses(),key=hs.map(function(id){return id+":"+nameOf(id);}).join("|");if(key!==plKey){plKey=key;drawPlates(hs);}
+        var near=LANTS.slice().sort(function(a,b){return Math.abs(a[0]-cx)-Math.abs(b[0]-cx);}).slice(0,4),Lp=[],Lc=[];
+        near.forEach(function(L,k){var f=reduce?1:(.9+.07*Math.sin(now*.006+k*1.7)+.03*Math.sin(now*.021+k));Lp.push(L[0],L[1],L[2]);Lc.push(.55*f,.24*f,.10*f);});
+        gl.useProgram(PT.p);base(PT,near[0],[Lc[0],Lc[1],Lc[2]]);gl.uniform3fv(PT.u["uL[0]"],Lp);gl.uniform3fv(PT.u["uLc[0]"],Lc);gl.uniform1f(PT.u.uMoonX,cx+2.6);
+        gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,plT);gl.uniform1i(PT.u.uPlates,0);
+        gl.bindVertexArray(vaoT);gl.drawArrays(gl.TRIANGLES,0,townN);
+        for(i=0;i<=HOUSES;i+=2)list.push({k:"__yanagi",px:YANAGI,x:i*3.6,z:.16,y:0,sc:2.2});
+        /* 切り絵は、いちばん近い提灯の明かりで照らし、その影を落とす */
+        lampOf=function(s0){var b=LANTS[0];LANTS.forEach(function(L){if(Math.abs(L[0]-s0.x)<Math.abs(b[0]-s0.x))b=L;});return b;};
+        gl.disable(gl.CULL_FACE);gl.useProgram(PS.p);base(PS,LANTS[0],[.55,.24,.10]);gl.uniform1f(PS.u.uIn,0);gl.uniform3f(PS.u.uFill,.07,.09,.16);shadowA=.45;
+      }else{
+        roomCam();
+        var wt=wallText();if(wt!==scText){scText=wt;drawScroll(wt);}
+        /* 明かり：部屋の行灯（いちばん手前のもの）。なければ天井の弱い明かり */
+        var lamp=null;
+        for(i=0;i<list.length;i++)if(list[i].k==="p-andon"&&(!lamp||list[i].z>lamp[2])){lamp=[list[i].x,list[i].y+11*S3+.04,list[i].z+.03];glowOne=list[i];}
+        var lc=lamp?[.62*fl,.36*fl,.16*fl]:[.30,.24,.17];if(!lamp)lamp=[RW/2,2.1,RD/2];
+        gl.useProgram(PR.p);base(PR,lamp,lc);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,scT);gl.uniform1i(PR.u.uScroll,0);
+        gl.bindVertexArray(vaoR);gl.drawArrays(gl.TRIANGLES,0,roomN);
+        lampOf=null;gl.disable(gl.CULL_FACE);gl.useProgram(PS.p);base(PS,lamp,lc);gl.uniform1f(PS.u.uIn,1);gl.uniform3f(PS.u.uFill,0,0,0);shadowA=glowOne?.62:0;
+      }
+      gl.uniform1i(PS.u.uTex,0);gl.uniform1f(PS.u.uShadow,shadowA);gl.bindVertexArray(vaoS);
+      function one(s0,mode){var sc=s0.sc||1;if(lampOf)gl.uniform3fv(PS.u.uLamp,lampOf(s0));
+        gl.bindTexture(gl.TEXTURE_2D,spriteTex(s0.k,s0.px));gl.uniform3f(PS.u.uO,s0.x,s0.y-5*S3*sc,s0.z);gl.uniform2f(PS.u.uSz,SZ*sc,SZ*sc);gl.uniform1i(PS.u.uMode,mode);
+        gl.uniform1f(PS.u.uGlow,mode===0&&s0===glowOne?1.6:0);gl.drawArrays(gl.TRIANGLES,0,6);}
+      list.forEach(function(s0){one(s0,0);});
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-4);
       gl.uniform1f(PS.u.uGlow,0);
       blobs.forEach(function(b){gl.uniform3f(PS.u.uO,b[0],0,b[1]);gl.uniform2f(PS.u.uSz,SZ,SZ);gl.uniform1i(PS.u.uMode,2);gl.drawArrays(gl.TRIANGLES,0,6);});
-      if(shadowA>0)list.forEach(function(s){if(s!==lampGlow)one(s,1);});
+      if(shadowA>0)list.forEach(function(s0){if(s0!==glowOne)one(s0,1);});
       if(marker){gl.uniform3f(PS.u.uO,(marker[0]+.5)*CELL,0,(marker[1]+.5)*CELL);gl.uniform2f(PS.u.uSz,CELL*.86,CELL*.86);gl.uniform1i(PS.u.uMode,3);gl.drawArrays(gl.TRIANGLES,0,6);}
       gl.disable(gl.POLYGON_OFFSET_FILL);gl.depthMask(true);gl.disable(gl.BLEND);
     }
@@ -682,7 +786,7 @@ function loop3(now){
   if(!R3||phase!=="in"||mode!=="room"||document.hidden)return;
   rx.setTransform(2,0,0,2,0,0);rx.clearRect(0,0,W,H);
   R3.begin();drawSprites();
-  var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<COLS&&fy0>=0&&fy0<ROWS)?[fx0,fy0]:null;
+  var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<gw()&&fy0>=0&&fy0<gh())?[fx0,fy0]:null;
   R3.render(now,mk);
   liveTags();
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
@@ -691,25 +795,25 @@ function loop3(now){
 
 /* ---- 歩く ---- */
 function route(tx,ty){
-  var prev={},q=[[me.x,me.y]],d=[[1,0],[-1,0],[0,1],[0,-1]];prev[me.y*COLS+me.x]=-1;
+  var G=gw(),prev={},q=[[me.x,me.y]],d=[[1,0],[-1,0],[0,1],[0,-1]];prev[me.y*G+me.x]=-1;
   while(q.length){var p=q.shift();
-    if(p[0]===tx&&p[1]===ty){var out=[],k=ty*COLS+tx;while(prev[k]!==-1){out.unshift([k%COLS,Math.floor(k/COLS)]);k=prev[k];}return out;}
-    for(var i=0;i<4;i++){var nx=p[0]+d[i][0],ny=p[1]+d[i][1],nk=ny*COLS+nx;
-      if(walkable(nx,ny)&&prev[nk]===undefined){prev[nk]=p[1]*COLS+p[0];q.push([nx,ny]);}}
+    if(p[0]===tx&&p[1]===ty){var out=[],k=ty*G+tx;while(prev[k]!==-1){out.unshift([k%G,Math.floor(k/G)]);k=prev[k];}return out;}
+    for(var i=0;i<4;i++){var nx=p[0]+d[i][0],ny=p[1]+d[i][1],nk=ny*G+nx;
+      if(walkable(nx,ny)&&prev[nk]===undefined){prev[nk]=p[1]*G+p[0];q.push([nx,ny]);}}
   }
   return null;
 }
 function placeMe(){
   if(walkable(me.x,me.y))return;var best=null,bd=99;
-  for(var cy=0;cy<ROWS;cy++)for(var cx=0;cx<COLS;cx++){var dd=Math.abs(cx-me.x)+Math.abs(cy-me.y);if(walkable(cx,cy)&&dd<bd){bd=dd;best=[cx,cy];}}
+  for(var cy=0;cy<gh();cy++)for(var cx=0;cx<gw();cx++){var dd=Math.abs(cx-me.x)+Math.abs(cy-me.y);if(walkable(cx,cy)&&dd<bd){bd=dd;best=[cx,cy];}}
   if(best){me.x=me.fx=best[0];me.y=me.fy=best[1];}
 }
 function step(dx,dy){
   if(me.moving||me.jumping)return;
   var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];if(turned)liveMe(me.x,me.y);
   var tx=me.x+dx,ty=me.y+dy;
-  if(tx<0||tx>=COLS||ty<0||ty>=ROWS){drawRoom();if(actTarget()!=="write")setStatus("そっちは壁。");return;}
-  var tst=room[ty*COLS+tx];
+  if(tx<0||tx>=gw()||ty<0||ty>=gh()){drawRoom();if(where==="town"){if(doorAhead()<0)setStatus(ty<0?"家の壁。戸の前で上を向くと入れる。":"その先は川。");}else if(actTarget()==="jump")setStatus("そっちは壁。");return;}
+  var tst=where==="town"?[]:room[ty*COLS+tx];
   if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus(actTarget()==="dress"?"衣装台の前に立った。橙のボタンで着替えられる。拾うこともできる。":"「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
   var d=stackTop(ty*COLS+tx)-stackTop(me.y*COLS+me.x);
   if(d>14){drawRoom();setStatus("高すぎて登れない。低い家具なら跳び乗れる。");return;}
@@ -813,9 +917,9 @@ rc.addEventListener("click",function(e){
 var inv=document.getElementById("inv"),statusEl=document.getElementById("status"),discard=document.getElementById("discard"),baseEl=document.getElementById("base"),bagEl=document.getElementById("bag"),bagBtn=document.getElementById("bag-btn");
 function setStatus(t){statusEl.textContent=t;}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
-function hint(){setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。");}
+function hint(){if(where==="town"){setStatus("川沿いの町。歩いて人と会える。家の戸の前で上を向き、橙のボタンで入る。");return;}setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。右の壁の手前の戸から外に出られる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。右の壁の手前の戸から外に出られる。");}
 function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
-function inRoom(p){return p[0]>=0&&p[0]<COLS&&p[1]>=0&&p[1]<ROWS;}
+function inRoom(p){return p[0]>=0&&p[0]<gw()&&p[1]>=0&&p[1]<gh();}
 function itemButton(it,fn){
   var b=document.createElement("button");b.className="item";b.type="button";
   var c=document.createElement("canvas");c.width=N;c.height=N;paint(c.getContext("2d"),it.px,0,0);b.appendChild(c);
@@ -867,8 +971,11 @@ function placePet(){
   pet.from=[pet.x,pet.y];pet.t0=0;
 }
 /* 橙のボタン：衣装台や壁の短冊に向いていれば、それを使う。ほかは跳ぶ */
-var ACTS={jump:"跳ぶ",dress:"着替える",write:"短冊を書く"},actNow="jump";
+var ACTS={jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る"},actNow="jump";
 function actTarget(){
+  if(where==="town"){var h=doorAhead();if(h<0)return "jump";var o=houses()[h];return !o?"jump":o===uid?"homedoor":"door";}
+  /* 部屋の出口は右の壁の手前寄り（手前から2・3マス目） */
+  if(me.x===COLS-1&&me.dir[0]===1&&me.dir[1]===0&&(me.y===3||me.y===4))return "out";
   if(where!=="mine")return "jump";
   var f=front();
   if(inRoom(f)&&room[f[1]*COLS+f[0]].indexOf("p-ishoudai")>=0)return "dress";
@@ -881,12 +988,19 @@ function syncAct(){
   actNow=a;el("go-jump").textContent=ACTS[a];
   if(a==="dress")setStatus("衣装台の前に立った。橙のボタンで着替えられる。");
   else if(a==="write")setStatus("壁の短冊の前に立った。橙のボタンで書ける。");
+  else if(a==="out")setStatus("戸の前に立った。橙のボタンで外に出る。");
+  else if(a==="door")setStatus(nameOf(houses()[doorAhead()])+"の家の戸の前。橙のボタンで入る。");
+  else if(a==="homedoor")setStatus("自分の家の戸の前。橙のボタンで入る。");
+  else if(where==="town"&&me.y===0&&me.dir[1]===-1&&(me.x%8===3||me.x%8===4))setStatus("空き家。まだ誰も住んでいない。");
 }
 function act(){
   if(me.moving||me.jumping)return;
   var a=actTarget();
   if(a==="dress"){show("dress");return;}
   if(a==="write"){show("write");return;}
+  if(a==="out"){goOut();return;}
+  if(a==="door"){var o=houses()[doorAhead()];if(o)visitRes(o,true);return;}
+  if(a==="homedoor"){goHome(true);return;}
   jump();
 }
 function swRow(id,list,cur,fn){var el=document.getElementById(id);el.textContent="";list.forEach(function(v){
@@ -1247,8 +1361,10 @@ el("post-go").addEventListener("click",function(){
 });
 
 /* ---- 訪ねる ---- */
+/* 戸から入ったときは、部屋の出口（右の壁の手前寄り）の内側に立つ */
+function atDoor(){me.x=me.fx=COLS-1;me.y=me.fy=4;me.dir=[-1,0];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placeMe();placePet();}
 function resetMe(){me.x=me.fx=3;me.y=me.fy=5;me.dir=[0,-1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placeMe();placePet();}
-function visitRes(id){
+function visitRes(id,door){
   if(phase!=="in"||me.moving||me.jumping)return;
   var r=profiles[id];
   if(!r||id===uid){note("その住民の部屋は、いまは見つからない。");return;}
@@ -1257,7 +1373,7 @@ function visitRes(id){
   where="res";visitId=id;visitNm=r.name;visitCustom=[];host=null;
   room=r.room.map(function(c){return c.slice();});
   bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");
-  resetMe();liveJoin();
+  if(door)atDoor();else resetMe();liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent=r.name+"の部屋にいる";
   show("room");drawReplies();drawRoom();
   /* その人の自作の家具を読む */
@@ -1269,13 +1385,26 @@ function visitRes(id){
     drawRoom();
   });
 }
-function goHome(){
+function goHome(door){
   if(where==="mine"||me.moving||me.jumping)return;
-  room=home||emptyRoom();home=null;where="mine";visitId=null;visitNm="";visitCustom=[];host=null;resetMe();liveJoin();
+  room=home||emptyRoom();home=null;where="mine";visitId=null;visitNm="";visitCustom=[];host=null;if(door===true)atDoor();else resetMe();liveJoin();
   el("visit-bar").hidden=true;el("reply-panel").hidden=true;
   drawRoom();count();hint();
 }
-el("go-home").addEventListener("click",goHome);
+el("go-home").addEventListener("click",function(){goHome(false);});
+/* 外に出る：今いる部屋の家の戸の前に立つ */
+function goOut(){
+  if(phase!=="in"||me.moving||me.jumping)return;
+  if(!R3){setStatus("この端末では、街を描けない。");return;}
+  var hs=houses(),owner=where==="mine"?uid:visitId,i=hs.indexOf(owner);
+  if(where==="mine")home=room;
+  where="town";visitId=null;visitNm="";visitCustom=[];host=null;room=[];
+  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");el("reply-panel").hidden=true;
+  me.x=me.fx=i>=0?i*8+3:2;me.y=me.fy=0;me.dir=[0,1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placePet();
+  liveJoin();
+  el("visit-bar").hidden=false;el("visit-name").textContent="川沿いの町にいる";
+  show("room");setStatus(i>=0?"外に出た。後ろが"+(owner===uid?"自分":nameOf(owner))+"の家。":"外に出た。");
+}
 
 /* ---- 一緒にいる人：同じ部屋にいる住民の姿と歩く動きを、その場で見せる ----
    通り道は「room:部屋の持ち主の id」。鍵付き（private）で、入場している住民だけが入れる。
@@ -1283,8 +1412,8 @@ el("go-home").addEventListener("click",goHome);
 var live={ch:null,topic:"",others:Object.create(null),raf:0,since:0,ok:false,hiT:0,joinT:0};
 /* 1つの部屋に入れるのは、主と客5人の合計6人まで（2026-11-16、はる） */
 var GUESTMAX=5,SAYMAX=30,SAYMS=6000;
-function liveOwner(){return where==="mine"?uid:visitId;}
-function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<COLS&&y>=0&&y<ROWS;}
+function liveOwner(){return where==="town"?TOWN_ID:where==="mine"?uid:visitId;}
+function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<gw()&&y>=0&&y<gh();}
 function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
 function liveJoin(){
   var owner=liveOwner();
@@ -1466,7 +1595,7 @@ function liveTags(){
 var replying=false;
 function drawReplies(){
   var panel=el("reply-panel");
-  if(where==="mine"){panel.hidden=true;return;}
+  if(where!=="res"){panel.hidden=true;return;}
   /* 書きかけの返事は、描き直しても消さない */
   var drafts={},focusK=null,act=document.activeElement;
   Array.prototype.forEach.call(panel.querySelectorAll("input[data-k]"),function(i){drafts[i.getAttribute("data-k")]=i.value;if(i===act)focusK=i.getAttribute("data-k");});
