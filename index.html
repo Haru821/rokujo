@@ -945,9 +945,15 @@ function init3d(){
   /* 部屋は固定の向き。街は自分を追って横へ動く */
   function fovFor(base,half){var a=W/H;return Math.max(base,2*Math.atan(Math.tan(half)/a));}
   function roomCam(){var a=W/H,tall=a<1.3;/* とても縦長：部屋の幅が収まる距離を形から出し、斜め上から見下ろす */
-    if(a<.8){var d=1.95/(Math.tan(.5)*a);setCam([RW/2,.3+d*.85,1.35+d*.53],[RW/2,.3,1.35],1.0);return;}if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
+    if(a<.8){/* とても縦長：部屋の幅を全部入れると遠く真上になるので、斜めから近くで見て、自分に合わせて横に動く */
+      var f=1.05,hw=1.45,el=.5,tz=.9,d=hw/(Math.tan(f/2)*a),px=(me.fx+.5)*CELL,cx=Math.max(hw-.55,Math.min(RW-hw+.55,px));
+      if(hw*2>=RW)cx=RW/2;setCam([cx,.3+d*Math.sin(el),tz+d*Math.cos(el)],[cx,.3,tz],f);return;}if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
   /* 街：両岸の通りと家の表が横に収まる距離を、画面の形から出す。縦長の携帯ほど高く遠くから見下ろす。自分の岸へ少し寄る */
   function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL)),a=W/H,f=a<1?.95:.8,half=a<1?3.3:2.6;
+    if(a<.8){/* とても縦長：両岸を全部入れると遠すぎるので、自分の岸に寄って近くから。川の側から見て、家の表が見えるように */
+      var tf=1.1,th=1.7,te=.42,ts=1.25,ta=1.0,td=th/(Math.tan(tf/2)*a),px=(me.fx+.5)*CELL,
+        tx=Math.max(ts,Math.min(RX-ts,px));
+      setCam([tx,.2+td*Math.sin(te),fz-ta+td*Math.cos(te)],[tx,.2,fz-ta],tf);return fz;}
     var d=Math.max(5.6,half/(Math.tan(f/2)*a)),cx=RX/2+((me.fx+.5)*CELL-RX/2)*.3,el=a<1?.62:.42;
     setCam([cx,.2+d*Math.sin(el),fz-1.0+d*Math.cos(el)],[cx,.2,fz-1.0],f);return fz;}
   roomCam();
@@ -2531,7 +2537,7 @@ try{R3=init3d();}catch(e){R3=null;}
 /* 立体のときは、画面の形を携帯に合わせて縦に伸ばす（横長 14:9 のままだと小さかった） */
 /* 携帯（指で触る画面か、幅640px以下）で部屋か街を見ているときは、画面だけで遊ぶ形にする */
 /* 画面いっぱいの形は、直すまで止めておく（2026-11-17、はる）。試すときは URL の末尾に #play */
-var PLAY_ON=false;try{PLAY_ON=location.hash==="#play";}catch(e){}
+var PLAY_ON=false;try{PLAY_ON=location.hash==="#play"||window.__rokujoPlay===true;}catch(e){}
 function playWanted(){if(!PLAY_ON)return false;var coarse=false;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(e){}return !!R3&&phase==="in"&&mode==="room"&&(coarse||window.innerWidth<=640);}
 function syncPlay(){
   var on=playWanted(),b=document.body;b.classList.toggle("play",on);
