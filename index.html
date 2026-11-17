@@ -597,8 +597,8 @@ function init3d(){
   "vec3 c=alb*lc*max(dot(N,L),0.)+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*max(dot(N,L),0.);",
   "c+=moonC(alb,vP,N)+ambient(alb,N,a)+emit;o=vec4(tone(c),1.);}"].join("\n");
   /* mode 0：紙の切り絵　1：明かりが床に落とす影　2：足もとの影　3：目の前の畳の橙の印 */
-  var SPR_VS="#version 300 es\nlayout(location=0)in vec2 aC;uniform mat4 uVP;uniform vec3 uO;uniform vec2 uSz;uniform int uMode;uniform vec3 uLamp;\nout vec2 vT;out vec3 vP;out vec2 vL;out float vFade;\n"+[
-  "void main(){vec3 P=uO+vec3(aC.x*uSz.x,aC.y*uSz.y,0.);vT=vec2(aC.x+.5,1.-aC.y);vL=aC;vFade=1.;",
+  var SPR_VS="#version 300 es\nlayout(location=0)in vec2 aC;uniform mat4 uVP;uniform vec3 uO;uniform vec2 uSz;uniform int uMode;uniform vec3 uLamp;uniform float uSway;uniform float uT;\nout vec2 vT;out vec3 vP;out vec2 vL;out float vFade;\n"+[
+  "void main(){vec3 P=uO+vec3(aC.x*uSz.x,aC.y*uSz.y,0.);P.x+=sin(uT*1.3+uO.z*1.7)*uSway*aC.y*aC.y;vT=vec2(aC.x+.5,1.-aC.y);vL=aC;vFade=1.;",
   "if(uMode==1){vec3 Q=P;Q.y=min(Q.y,uLamp.y-.03);float t=uLamp.y/(uLamp.y-Q.y);vec3 Sh=uLamp+(Q-uLamp)*t;vec2 h=Sh.xz-uLamp.xz;float l=length(h);",
   "  if(l>2.6){Sh.xz=uLamp.xz+h/l*2.6;}vFade=1.-smoothstep(.4,2.6,l);P=vec3(Sh.x,.003,Sh.z);}",
   "if(uMode==2){P=uO+vec3(aC.x*uSz.x*.9,.002,(aC.y-.5)*uSz.x*.45);}",
@@ -619,7 +619,7 @@ function init3d(){
   function prog(vs,fs){var p=gl.createProgram();gl.attachShader(p,shd(gl.VERTEX_SHADER,vs));gl.attachShader(p,shd(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
     var u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(var i=0;i<n;i++){var nm=gl.getActiveUniform(p,i).name;u[nm]=gl.getUniformLocation(p,nm);}return {p:p,u:u};}
   /* 街：石畳・家の表（板、格子、引き戸、表札、提灯）・瓦・石垣・川・夜空 */
-  var TOWN_FS="#version 300 es\n"+COMMON+"\nuniform vec3 uL[6];uniform vec3 uLc[6];uniform float uHome[12];uniform sampler2D uPlates;uniform float uMoonX;in vec3 vP;in vec3 vN;in vec2 vU;flat in float vMat;in float vSeed;out vec4 o;\n"+[
+  var TOWN_FS="#version 300 es\n"+COMMON+"\nuniform highp sampler2D uShadow;uniform mat4 uLVP;uniform float uShOn;\nfloat sunVis(vec3 P){if(uShOn<.5)return 1.;vec4 q=uLVP*vec4(P,1.);vec3 p=q.xyz/q.w*.5+.5;if(p.x<0.||p.x>1.||p.y<0.||p.y>1.||p.z>1.)return 1.;float s=0.;for(int i=0;i<4;i++){vec2 o=(vec2(float(i-(i/2)*2),float(i/2))-.5)*1.6/1024.;s+=p.z-.003>texture(uShadow,p.xy+o).r?0.:1.;}return s*.25;}\nuniform vec3 uL[6];uniform vec3 uLc[6];uniform float uHome[12];uniform sampler2D uPlates;uniform float uMoonX;in vec3 vP;in vec3 vN;in vec2 vU;flat in float vMat;in float vSeed;out vec4 o;\n"+[
   "void main(){int m=int(vMat+.5);vec3 N=normalize(vN);vec3 alb=vec3(.3);float ks=0.,sh=20.;vec3 emit=vec3(0.);",
   "int hi=int(mod(vSeed,100.)+.5);float lit=vSeed>=100.?uHome[hi]:0.;float hs=hash(vec2(mod(vSeed,100.),7.1));",
   /* 石畳 */
@@ -670,9 +670,55 @@ function init3d(){
   "vec3 V=normalize(uCam-vP);vec3 c=vec3(0.);",
   "for(int i=0;i<6;i++){vec3 d=uL[i]-vP;float d2=dot(d,d);vec3 L=d*inversesqrt(d2);float nl=max(dot(N,L),0.);vec3 lc=uLc[i]/(d2+.10);",
   "  c+=alb*lc*nl+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*nl;}",
-  "c+=alb*uSunC*.5*(.35+.65*max(dot(N,normalize(vec3(-.3,.8,.5))),0.))+alb*mix(uAmbG,uAmbS,N.y*.5+.5);",
+  "float sv=sunVis(vP);c+=alb*uSunC*.5*(.35+.65*max(dot(N,normalize(vec3(-.3,.8,.5))),0.))*mix(.25,1.,sv)+alb*mix(uAmbG,uAmbS,N.y*.5+.5)*mix(.75,1.,sv);",
   "c+=emit;float fd=length(vP-uCam);c=mix(c,uFogC,1.-exp(-fd*(.035-.022*uDay)));o=vec4(tone(c),1.);}"].join("\n");
   var PR,PS,PT;try{PR=prog(ROOM_VS,ROOM_FS);PS=prog(SPR_VS,SPR_FS);PT=prog(ROOM_VS,TOWN_FS);}catch(e){return null;}
+  /* 仕上げ：影の深さ、花びらと蛍、ぼかしとにじみ。どれかが使えなくても、今までどおり描く */
+  var FX=null;
+  try{
+    var SHD_VS="#version 300 es\nlayout(location=0)in vec3 aP;uniform mat4 uLVP;void main(){gl_Position=uLVP*vec4(aP,1.);}";
+    var SHD_FS="#version 300 es\nprecision mediump float;out vec4 o;void main(){o=vec4(1.);}";
+    var PART_VS="#version 300 es\nuniform mat4 uVP;uniform float uT;uniform vec3 uC;uniform int uK;uniform float uPx;out float vA;out vec3 vCol;\n"+
+      "float h(float n){return fract(sin(n*12.9898)*43758.5453);}\n"+
+      "void main(){float i=float(gl_VertexID);vec3 P;float a=1.;\n"+
+      " if(uK==0){float x=-.4+h(i)*5.3,z=uC.z-9.+fract(h(i+7.)+uT*.015)*13.,fall=fract(h(i+3.)+uT*(.05+.04*h(i+5.)));P=vec3(x+sin(uT*.9+i)*.25,3.4-fall*3.4,z+cos(uT*.7+i)*.2);a=smoothstep(0.,.1,fall)*smoothstep(1.,.85,fall);vCol=vec3(1.,.78,.86);}\n"+
+      " else{float x=1.15+h(i)*2.2,z=uC.z-6.+h(i+2.)*10.;P=vec3(x+sin(uT*.6+i*3.)*.3,.25+h(i+4.)*.7+sin(uT*.9+i)*.1,z+cos(uT*.5+i*2.)*.3);a=pow(max(0.,sin(uT*1.7+i*20.)),3.);vCol=vec3(.85,1.,.45);}\n"+
+      " vec4 c=uVP*vec4(P,1.);gl_Position=c;gl_PointSize=min(28.,(uK==0?.06:.04)*uPx/max(c.w,.1));vA=a;}";
+    var PART_FS="#version 300 es\nprecision mediump float;precision highp int;in float vA;in vec3 vCol;uniform int uK;out vec4 o;void main(){vec2 d=gl_PointCoord-.5;float r=length(d*vec2(1.,uK==0?1.6:1.));if(r>.5)discard;float a=uK==0?(1.-smoothstep(.3,.5,r))*vA*.85:(1.-smoothstep(0.,.5,r))*vA;o=vec4(vCol*(uK==0?.9:2.2),a);}";
+    var PPV="#version 300 es\nout vec2 vUv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUv=p;gl_Position=vec4(p*2.-1.,0.,1.);}";
+    var BLUR_FS="#version 300 es\nprecision mediump float;uniform sampler2D uTex;uniform vec2 uDir;in vec2 vUv;out vec4 o;void main(){vec4 c=texture(uTex,vUv)*.227;c+=(texture(uTex,vUv+uDir*1.385)+texture(uTex,vUv-uDir*1.385))*.316;c+=(texture(uTex,vUv+uDir*3.231)+texture(uTex,vUv-uDir*3.231))*.070;o=c;}";
+    /* ジオラマ風：自分のいる高さはくっきり、上下ほどぼける。明るい所はにじむ */
+    var COMP_FS="#version 300 es\nprecision mediump float;uniform sampler2D uScene;uniform sampler2D uBlur;uniform float uFocus;uniform float uBand;uniform float uAmt;uniform float uBloom;in vec2 vUv;out vec4 o;void main(){vec3 s=texture(uScene,vUv).rgb;vec3 b=texture(uBlur,vUv).rgb;float t=smoothstep(uBand,uBand+.3,abs(vUv.y-uFocus))*uAmt;vec3 c=mix(s,b,t);float l=dot(b,vec3(.3,.59,.11));c+=b*smoothstep(.62,1.,l)*uBloom;o=vec4(c,1.);}";
+    FX={sh:prog(SHD_VS,SHD_FS),part:prog(PART_VS,PART_FS),blur:prog(PPV,BLUR_FS),comp:prog(PPV,COMP_FS),vaoE:gl.createVertexArray(),post:true,shadow:true,w:0,h:0,lastFz:-99,frame:0};
+    /* 影の深さを入れる板（1024×1024） */
+    FX.shT=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,FX.shT);gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,1024,1024,0,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
+    [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER].forEach(function(k){gl.texParameteri(gl.TEXTURE_2D,k,gl.NEAREST);});
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    FX.shF=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,FX.shF);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,FX.shT,0);
+    var shc=document.createElement("canvas");shc.width=shc.height=1;
+    FX.shCol=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,FX.shCol);gl.renderbufferStorage(gl.RENDERBUFFER,gl.RGBA8,1024,1024);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,FX.shCol);
+    if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)FX.shadow=false;
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    FX.samples=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)||0);
+  }catch(e){FX=null;gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+  function fxTarget(w,h){var t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    var f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return {f:f,t:t};}
+  function fxFree(){["scene","a","b"].forEach(function(k){if(FX[k]){gl.deleteFramebuffer(FX[k].f);gl.deleteTexture(FX[k].t);FX[k]=null;}});
+    if(FX.msF){gl.deleteFramebuffer(FX.msF);gl.deleteRenderbuffer(FX.msC);FX.msF=null;}if(FX.dR){gl.deleteRenderbuffer(FX.dR);FX.dR=null;}}
+  /* 絵を一度、裏の板に描いてから仕上げる。板の大きさは画面に合わせる */
+  function fxSize(w,h){if(FX.w===w&&FX.h===h)return FX.post;fxFree();FX.w=w;FX.h=h;
+    try{FX.scene=fxTarget(w,h);FX.a=fxTarget(Math.max(1,w>>1),Math.max(1,h>>1));FX.b=fxTarget(Math.max(1,w>>1),Math.max(1,h>>1));
+      FX.dR=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,FX.dR);
+      if(FX.samples>1){FX.msF=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,FX.msF);FX.msC=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,FX.msC);
+        gl.renderbufferStorageMultisample(gl.RENDERBUFFER,FX.samples,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,FX.msC);
+        gl.bindRenderbuffer(gl.RENDERBUFFER,FX.dR);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,FX.samples,gl.DEPTH_COMPONENT24,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,FX.dR);}
+      else{gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,w,h);gl.bindFramebuffer(gl.FRAMEBUFFER,FX.scene.f);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,FX.dR);}
+      if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)FX.post=false;}catch(e){FX.post=false;}
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);return FX.post;}
+  function ortho(l,r,b,t,n,f){return [2/(r-l),0,0,0,0,2/(t-b),0,0,0,0,-2/(f-n),0,-(r+l)/(r-l),-(t+b)/(t-b),-(f+n)/(f-n),1];}
+  function lookM(e,c){var z=norm(sub(e,c)),x=norm(cross([0,1,0],z)),y=cross(z,x);return [x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,e),-dot(y,e),-dot(z,e),1];}
   /* 部屋の形：位置3・向き3・模様の座標2・材質2 */
   var V=[];
   function quad(a,b,c,d,n,ua,ub,uc,ud,m,seed){[a,b,c,a,c,d].forEach(function(p,i){var uv=[ua,ub,uc,ua,uc,ud][i];V.push(p[0],p[1],p[2],n[0],n[1],n[2],uv[0],uv[1],m,seed||0);});}
@@ -870,6 +916,15 @@ function init3d(){
       function base(P,lamp,lc){gl.uniformMatrix4fv(P.u.uVP,false,VP);gl.uniform3fv(P.u.uLamp,lamp);gl.uniform3fv(P.u.uLampCol,lc);gl.uniform3fv(P.u.uCam,camP);
         gl.uniform1f(P.u.uDay,td.day);gl.uniform3fv(P.u.uSkyT,td.skyT);gl.uniform3fv(P.u.uSkyH,td.skyH);gl.uniform3fv(P.u.uSunC,td.sun);gl.uniform3fv(P.u.uAmbS,td.ambS);gl.uniform3fv(P.u.uAmbG,td.ambG);gl.uniform3fv(P.u.uFogC,td.fog);
         gl.uniform1f(P.u.uTime,reduce?0:now/1000);gl.uniform2f(P.u.uRes,cv.width,cv.height);}
+      var usePost=!!(FX&&FX.post&&fxSize(cv.width,cv.height));
+      /* 街：日と月の影の深さを、ときどき描き直す（家が動かないので毎回は要らない） */
+      var LVP=null;
+      if(FX&&FX.shadow&&where==="town"){var fzS=Math.max(1.2,Math.min(TL-1,(me.fy+.5)*CELL)),ctr=[RX/2,0,fzS-1.5],ld=norm([-.3,.8,.5]);
+        LVP=mul(ortho(-7,7,-7,7,.1,40),lookM([ctr[0]+ld[0]*15,ctr[1]+ld[1]*15,ctr[2]+ld[2]*15],ctr));
+        if(Math.abs(fzS-FX.lastFz)>.6||FX.frame++%60===0){FX.lastFz=fzS;gl.bindFramebuffer(gl.FRAMEBUFFER,FX.shF);gl.viewport(0,0,1024,1024);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
+          gl.useProgram(FX.sh.p);gl.uniformMatrix4fv(FX.sh.u.uLVP,false,LVP);gl.bindVertexArray(vaoT);gl.drawArrays(gl.TRIANGLES,0,townN);FX.lvp=LVP;}
+        LVP=FX.lvp;}
+      gl.bindFramebuffer(gl.FRAMEBUFFER,usePost?(FX.msF||FX.scene.f):null);
       gl.viewport(0,0,cv.width,cv.height);gl.clearColor(td.fog[0]*.6,td.fog[1]*.6,td.fog[2]*.6,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
       gl.enable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE); /* 壁は内側から見るので、裏表で消さない */
       var SZ=34*S3,lampOf,glowOne=null,shadowA,town=where==="town";
@@ -882,6 +937,7 @@ function init3d(){
         var near=cand.slice(0,6);while(near.length<6)near.push({p:[0,-60,0],c:[0,0,0]});
         var Lp=[],Lc=[];near.forEach(function(L){Lp.push(L.p[0],L.p[1],L.p[2]);Lc.push(L.c[0],L.c[1],L.c[2]);});
         gl.useProgram(PT.p);base(PT,near[0].p,near[0].c);gl.uniform3fv(PT.u["uL[0]"],Lp);gl.uniform3fv(PT.u["uLc[0]"],Lc);gl.uniform1fv(PT.u["uHome[0]"],homes);gl.uniform1f(PT.u.uMoonX,RX/2+1.6);
+        gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,LVP?FX.shT:null);gl.uniform1i(PT.u.uShadow,1);gl.uniform1f(PT.u.uShOn,LVP?1:0);if(LVP)gl.uniformMatrix4fv(PT.u.uLVP,false,LVP);
         gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,plT);gl.uniform1i(PT.u.uPlates,0);
         gl.bindVertexArray(vaoT);gl.drawArrays(gl.TRIANGLES,0,townN);
         DECOR.forEach(function(d){list.push(d);});
@@ -900,7 +956,8 @@ function init3d(){
         lampOf=null;gl.useProgram(PS.p);base(PS,lamp,lc);gl.uniform1f(PS.u.uIn,1);gl.uniform3f(PS.u.uFill,0,0,0);gl.uniform1f(PS.u.uFog,0);shadowA=glowOne?.62:0;
       }
       gl.uniform1i(PS.u.uTex,0);gl.uniform1f(PS.u.uShadow,shadowA);gl.bindVertexArray(vaoS);
-      function one(s0,mode){var sc=s0.sc||1;if(lampOf){var LL=lampOf(s0);gl.uniform3fv(PS.u.uLamp,LL.p);gl.uniform3fv(PS.u.uLampCol,LL.c);}
+      gl.uniform1f(PS.u.uT,reduce?0:now/1000);
+      function one(s0,mode){var sc=s0.sc||1;gl.uniform1f(PS.u.uSway,reduce?0:s0.k==="__yanagi"?.09:s0.k==="__sakura"?.035:0);if(lampOf){var LL=lampOf(s0);gl.uniform3fv(PS.u.uLamp,LL.p);gl.uniform3fv(PS.u.uLampCol,LL.c);}
         gl.bindTexture(gl.TEXTURE_2D,spriteTex(s0.k,s0.px));gl.uniform3f(PS.u.uO,s0.x,s0.y-5*S3*sc,s0.z);gl.uniform2f(PS.u.uSz,SZ*sc,SZ*sc);gl.uniform1i(PS.u.uMode,mode);
         gl.uniform1f(PS.u.uGlow,mode===0&&s0===glowOne?1.6:0);gl.drawArrays(gl.TRIANGLES,0,6);}
       list.forEach(function(s0){one(s0,0);});
@@ -909,8 +966,28 @@ function init3d(){
       blobs.forEach(function(b){gl.uniform3f(PS.u.uO,b[0],0,b[1]);gl.uniform2f(PS.u.uSz,SZ,SZ);gl.uniform1i(PS.u.uMode,2);gl.drawArrays(gl.TRIANGLES,0,6);});
       if(shadowA>0)list.forEach(function(s0){if(s0!==glowOne)one(s0,1);});
       if(marker){gl.uniform3f(PS.u.uO,(marker[0]+.5)*CELL,0,(marker[1]+.5)*CELL);gl.uniform2f(PS.u.uSz,CELL*.86,CELL*.86);gl.uniform1i(PS.u.uMode,3);gl.drawArrays(gl.TRIANGLES,0,6);}
-      gl.disable(gl.POLYGON_OFFSET_FILL);gl.depthMask(true);gl.disable(gl.BLEND);
-    }
+      gl.disable(gl.POLYGON_OFFSET_FILL);
+      /* 花びら（いつも）と蛍（夕方から夜、川のそば） */
+      if(FX&&where==="town"&&!reduce){var fzP=Math.max(1.2,Math.min(TL-1,(me.fy+.5)*CELL));gl.useProgram(FX.part.p);gl.bindVertexArray(FX.vaoE);
+        gl.uniformMatrix4fv(FX.part.u.uVP,false,VP);gl.uniform1f(FX.part.u.uT,now/1000);gl.uniform3f(FX.part.u.uC,RX/2,0,fzP);gl.uniform1f(FX.part.u.uPx,cv.height/2*PROJ[5]);
+        gl.uniform1i(FX.part.u.uK,0);gl.drawArrays(gl.POINTS,0,70);
+        if(td.day<.4){gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.uniform1i(FX.part.u.uK,1);gl.drawArrays(gl.POINTS,0,36);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);}}
+      gl.depthMask(true);gl.disable(gl.BLEND);
+      if(usePost){
+        var W2=Math.max(1,cv.width>>1),H2=Math.max(1,cv.height>>1);
+        if(FX.msF){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,FX.msF);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,FX.scene.f);gl.blitFramebuffer(0,0,cv.width,cv.height,0,0,cv.width,cv.height,gl.COLOR_BUFFER_BIT,gl.NEAREST);}
+        gl.disable(gl.DEPTH_TEST);gl.bindVertexArray(FX.vaoE);gl.useProgram(FX.blur.p);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(FX.blur.u.uTex,0);gl.viewport(0,0,W2,H2);
+        var src=FX.scene.t;for(var pass=0;pass<2;pass++){
+          gl.bindFramebuffer(gl.FRAMEBUFFER,FX.a.f);gl.bindTexture(gl.TEXTURE_2D,src);gl.uniform2f(FX.blur.u.uDir,(pass+1)/W2,0);gl.drawArrays(gl.TRIANGLES,0,3);
+          gl.bindFramebuffer(gl.FRAMEBUFFER,FX.b.f);gl.bindTexture(gl.TEXTURE_2D,FX.a.t);gl.uniform2f(FX.blur.u.uDir,0,(pass+1)/H2);gl.drawArrays(gl.TRIANGLES,0,3);src=FX.b.t;}
+        gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(FX.comp.p);
+        gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,FX.scene.t);gl.uniform1i(FX.comp.u.uScene,0);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,FX.b.t);gl.uniform1i(FX.comp.u.uBlur,1);
+        var fc=clip([(me.fx+.5)*CELL,.3,(me.fy+.82)*CELL]),fy0=fc[2]>0?fc[1]/fc[2]*.5+.5:.5,isT=where==="town";
+        gl.uniform1f(FX.comp.u.uFocus,Math.max(.15,Math.min(.85,fy0)));gl.uniform1f(FX.comp.u.uBand,isT?.2:.34);gl.uniform1f(FX.comp.u.uAmt,isT?.7:.35);gl.uniform1f(FX.comp.u.uBloom,.06+.34*(1-td.day));
+        gl.drawArrays(gl.TRIANGLES,0,3);gl.activeTexture(gl.TEXTURE0);gl.enable(gl.DEPTH_TEST);}
+    },
+    /* 重い端末では、ぼかし・にじみ・影を切る */
+    lighten:function(){if(!FX||(!FX.post&&!FX.shadow))return false;FX.post=false;FX.shadow=false;return true;}
   };
 }
 /* 一日のめぐり：1時間で朝・昼・夕方・夜をひとめぐりする。時計の分で決めるので、全員に同じ時刻が見える（2026-11-17、はる） */
@@ -927,12 +1004,15 @@ function timeOfDay(){
   return o;
 }
 /* 立体のときは、決まった間隔で描き直す（行灯のゆらぎ）。部屋を見ていないときは描かない */
-var todT=0,lastPlaza=false,stageFor="";
+var todT=0,lastPlaza=false,stageFor="",perf={last:0,n:0,acc:0,start:0};
 function loop3(now){
   requestAnimationFrame(loop3);
   if(!R3||phase!=="in"||mode!=="room"||document.hidden)return;
   rx.setTransform(2,0,0,2,0,0);rx.clearRect(0,0,W,H);
   if(now-todT>3000){todT=now;drawTea();}
+  /* 2秒ほど、1回の描画に45ミリ秒以上かかっていたら、仕上げの効果を切る */
+  if(perf.last){var dt=now-perf.last;if(dt<500){perf.acc+=dt;perf.n++;}}perf.last=now;if(!perf.start)perf.start=now;
+  if(perf.n>=60){if(now-perf.start>4000&&perf.acc/perf.n>(window.__rokujoFxLimit||45)&&!window.__rokujoKeepFx&&R3.lighten())setStatus("この端末では重いので、ぼかしと影を切った。");perf.n=0;perf.acc=0;}
   if(where!==stageFor){stageFor=where;fitStage();}
   /* 広場に入ったら、ひとこと案内する */
   var inPlaza=where==="town"&&me.y<PL;if(inPlaza!==lastPlaza){lastPlaza=inPlaza;if(inPlaza&&!me.sit)setStatus("広場。人が集まれる。縁台に座れる。");}
