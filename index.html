@@ -112,6 +112,39 @@ a.btn{display:block;text-decoration:none;text-align:center}
 .say .btn{flex:0 0 auto}
 .person .on{flex:0 0 auto;font-size:12px;color:var(--lamp)}
 .person .on::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--lamp);box-shadow:0 0 6px var(--lamp)}
+/* 画面だけで遊ぶ形（携帯）：部屋と街を画面いっぱいに、操作は絵の上に重ねる */
+.hud,.hud-say,.hud-strips{display:none}
+.hbtn{padding:6px 10px;background:rgba(21,24,43,.72);color:var(--ink);border:2px solid rgba(240,162,60,.55);font:inherit;font-size:13px;cursor:pointer;touch-action:manipulation}
+body.play header,body.play #tabs,body.play #foot,body.play #logout,body.play .wrap>p.hint,body.play #notice{display:none!important}
+body.play.menu #tabs{display:flex!important;position:fixed;top:calc(52px + env(safe-area-inset-top,0px));left:8px;right:8px;z-index:40;flex-wrap:wrap}
+body.play #view-room{position:fixed;left:0;right:0;top:0;height:100vh;z-index:30;background:var(--night);display:block;padding:0}
+body.play .room-box{position:absolute;inset:0;margin:0}
+body.play #room{width:100%;height:100%}
+body.play .hud{display:flex;align-items:center;gap:8px;position:absolute;top:0;left:0;right:0;z-index:3;padding:calc(8px + env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) 8px max(10px,env(safe-area-inset-left,0px));background:linear-gradient(rgba(21,24,43,.85),rgba(21,24,43,0))}
+.hud-place{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.hud-tod{color:var(--mute);font-size:12px;white-space:nowrap}
+body.play .controls{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:3;display:block}
+body.play .pad{display:none}
+body.play .acts{width:auto;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:10px}
+body.play .acts #go-jump{width:88px;height:88px;min-height:0;border-radius:50%;font-size:16px;box-shadow:0 0 18px rgba(240,162,60,.45);grid-column:auto}
+body.play .acts #bag-btn,body.play .acts #pick-btn{min-height:0;padding:8px 12px;font-size:13px;background:rgba(21,24,43,.72);width:88px}
+body.play.away .acts #bag-btn,body.play.away .acts #pick-btn{display:none}
+body.play .hud-say{display:block;position:absolute;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:3;width:64px;height:64px;border-radius:50%;padding:0}
+body.play .hud-strips:not([hidden]){display:block;position:absolute;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:3}
+body.play.saying .hud-say,body.play.saying .controls,body.play.saying .hud-strips{display:none!important}
+body.play .say{display:none;position:absolute;left:0;right:0;bottom:0;z-index:4;padding:8px max(10px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));background:rgba(21,24,43,.94)}
+body.play.saying .say{display:flex}
+body.play #status{position:absolute;top:calc(50px + env(safe-area-inset-top,0px));left:10px;right:10px;z-index:2;min-height:0;padding:6px 10px;font-size:13px;background:rgba(32,36,74,.72);border-left-width:3px;pointer-events:none}
+body.play #status:empty{display:none}
+body.play #status.fade{opacity:0;transition:opacity .8s}
+body.play #visit-bar{display:none!important}
+body.play #bag:not([hidden]),body.play.strips #reply-panel:not([hidden]){position:absolute;left:0;right:0;bottom:0;z-index:5;max-height:52%;overflow:auto;padding:12px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));background:rgba(21,24,43,.96);border-top:2px solid var(--line)}
+body.play #reply-panel{display:none}
+/* 荷物や短冊を開いているときは、ボタンをその上に出す（閉じられるように） */
+body.play.bagopen .controls{bottom:calc(52% + 12px);z-index:6}
+body.play.strips .hud-strips:not([hidden]){bottom:calc(52% + 12px);z-index:6}
+body.play.bagopen .hud-say,body.play.strips .hud-say{display:none}
+body.play.strips #reply-panel:not([hidden]){display:flex}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -169,6 +202,14 @@ a.btn{display:block;text-decoration:none;text-align:center}
 
   <section id="view-room" hidden>
     <div class="room-box"><canvas id="room3d" hidden></canvas><canvas id="room" width="1120" height="720" aria-label="六畳の部屋"></canvas></div>
+    <div class="hud" id="hud">
+      <span class="hud-place" id="hud-place"></span>
+      <span class="hud-tod" id="hud-tod"></span>
+      <button class="hbtn" id="hud-snd" type="button" aria-pressed="false">音 切</button>
+      <button class="hbtn" id="hud-menu" type="button" aria-expanded="false" aria-label="ほかの画面へ">≡</button>
+    </div>
+    <button class="hbtn hud-say" id="hud-say" type="button">話す</button>
+    <button class="hbtn hud-strips" id="hud-strips" type="button" hidden>短冊</button>
     <div class="stick" id="stick" hidden><span class="stick-knob" id="stick-knob"></span></div>
     <div class="say">
       <label class="say-label" for="say-in">ひとこと</label>
@@ -579,7 +620,7 @@ function init3d(){
   "  float e=min(u,1.8-u);alb*=mix(.35,1.,smoothstep(.0,.006,e));}",
   "else if(m==2){alb=lin(vec3(.74,.65,.50))*(.80+.30*fbm(vU*38.))*(.94+.12*noise(vU*420.));}",
   "else if(m==3){float gr=sin(vU.y*95.+fbm(vU*vec2(1.5,22.))*9.);alb=lin(mix(vec3(.28,.17,.10),vec3(.45,.30,.18),gr*.5+.5));ks=.10;sh=40.;}",
-  "else if(m==4){float seam=1.-smoothstep(.0,.01,min(fract(vU.y/.3),1.-fract(vU.y/.3))*.3);float bat=1.-smoothstep(.02,.03,abs(fract(vU.x/.45)-.5)*.45-.195);",
+  "else if(m==4){if(uCam.y>2.35)discard;float seam=1.-smoothstep(.0,.01,min(fract(vU.y/.3),1.-fract(vU.y/.3))*.3);float bat=1.-smoothstep(.02,.03,abs(fract(vU.x/.45)-.5)*.45-.195);",
   "  alb=lin(vec3(.50,.36,.22))*(.78+.32*fbm(vU*vec2(1.,14.)))*(1.-.5*seam)*(1.-.35*bat);}",
   "else if(m==5){vec2 q=vU;if(bars(q)>.5){alb=lin(vec3(.20,.12,.07));ks=.06;}",
   "  else{vec3 sky=mix(uSkyT,uSkyH,1.-q.y);float d=length((q-vec2(.74,.70))*vec2(1.6,1.));",
@@ -888,8 +929,9 @@ function init3d(){
     VP=mul(PROJ,[fx[0],fy[0],fz[0],0,fx[1],fy[1],fz[1],0,fx[2],fy[2],fz[2],0,-dot(fx,camP),-dot(fy,camP),-dot(fz,camP),1]);}
   /* 部屋は固定の向き。街は自分を追って横へ動く */
   function fovFor(base,half){var a=W/H;return Math.max(base,2*Math.atan(Math.tan(half)/a));}
-  function roomCam(){var tall=W/H<1.3;if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
-  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL));setCam([RX/2,3.5,fz+4.7],[RX/2,.15,fz-1.3],fovFor(.8,.52));return fz;}
+  function roomCam(){var a=W/H,tall=a<1.3;/* とても縦長：部屋の幅が収まる距離を形から出し、斜め上から見下ろす */
+    if(a<.8){var d=1.95/(Math.tan(.5)*a);setCam([RW/2,.3+d*.85,1.35+d*.53],[RW/2,.3,1.35],1.0);return;}if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
+  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL));setCam([RX/2,3.5,fz+4.7],[RX/2,.15,fz-1.3],Math.min(1.15,fovFor(.8,.52)));return fz;}
   roomCam();
   function clip(p){var x=p[0],y=p[1],z=p[2];return [VP[0]*x+VP[4]*y+VP[8]*z+VP[12],VP[1]*x+VP[5]*y+VP[9]*z+VP[13],VP[3]*x+VP[7]*y+VP[11]*z+VP[15]];}
   var list=[],blobs=[],collecting=false;
@@ -1013,7 +1055,7 @@ function loop3(now){
   /* 2秒ほど、1回の描画に45ミリ秒以上かかっていたら、仕上げの効果を切る */
   if(perf.last){var dt=now-perf.last;if(dt<500){perf.acc+=dt;perf.n++;}}perf.last=now;if(!perf.start)perf.start=now;
   if(perf.n>=60){if(now-perf.start>4000&&perf.acc/perf.n>(window.__rokujoFxLimit||45)&&!window.__rokujoKeepFx&&R3.lighten())setStatus("この端末では重いので、ぼかしと影を切った。");perf.n=0;perf.acc=0;}
-  if(where!==stageFor){stageFor=where;fitStage();}
+  if(where!==stageFor){stageFor=where;syncPlay();}
   /* 広場に入ったら、ひとこと案内する */
   var inPlaza=where==="town"&&me.y<PL;if(inPlaza!==lastPlaza){lastPlaza=inPlaza;if(inPlaza&&!me.sit)setStatus("広場。人が集まれる。縁台に座れる。");}
   R3.begin();drawSprites();
@@ -1068,8 +1110,8 @@ function jumpTick(now){
 }
 function walkTo(tx,ty){
   if(me.moving||me.jumping)return;
+  if(tx===me.x&&ty===me.y){act();return;}
   if(me.sit){me.sit=null;liveMe(me.x,me.y);}me.hop=false;
-  if(tx===me.x&&ty===me.y){setStatus("もうそこに立っている。");return;}
   if(!walkable(tx,ty)){if(where==="town"){setStatus(ty<PL?"そこには立てない。":"川がある。橋を渡る。");return;}setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
   var p=route(tx,ty);if(!p){setStatus("家具にふさがれて、そこまで歩けない。");return;}
   if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveMe(tx,ty);return;}
@@ -1149,7 +1191,8 @@ rc.addEventListener("click",function(e){
 
 /* ---- 荷物：目の前の畳に出す・拾う ---- */
 var inv=document.getElementById("inv"),statusEl=document.getElementById("status"),discard=document.getElementById("discard"),baseEl=document.getElementById("base"),bagEl=document.getElementById("bag"),bagBtn=document.getElementById("bag-btn");
-function setStatus(t){statusEl.textContent=t;}
+var stT=0;
+function setStatus(t){statusEl.textContent=t;statusEl.classList.remove("fade");clearTimeout(stT);stT=setTimeout(function(){statusEl.classList.add("fade");},5000);}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
 function hint(){if(where==="town"){setStatus("川沿いの町。両岸に通りがあり、橋で渡れる。家の戸の方を向き、橙のボタンで入る。明かりのついた家には、誰かがいる。");return;}setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。右の壁の奥の戸から外に出られる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。右の壁の奥の戸から外に出られる。");}
 function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
@@ -1179,8 +1222,9 @@ function pick(){
   var n=find(room[f[1]*COLS+f[0]].pop());save();drawRoom();count();setStatus("「"+(n?n.name:"家具")+"」を拾って荷物に入れた。");
 }
 function toggleBag(open){
+  if(!open)document.body.classList.remove("strips");
   if(open&&where!=="mine"){setStatus("人の部屋では荷物を開けない。");return;}
-  bagOpen=open;bagEl.hidden=!open;bagBtn.setAttribute("aria-pressed",String(open));
+  bagOpen=open;bagEl.hidden=!open;bagBtn.setAttribute("aria-pressed",String(open));document.body.classList.toggle("bagopen",open);
   if(open){drawInv();setStatus("出したい物をタップすると、目の前の畳に置く。");}else hint();
 }
 bagBtn.addEventListener("click",function(){toggleBag(!bagOpen);});
@@ -1504,7 +1548,7 @@ function discardFurn(cur){
 }
 
 /* ---- お茶：数えるのはデータ側 ---- */
-function drawTea(){try{var tn=timeOfDay().name;el("tod").textContent=tn;}catch(e){}el("tea").textContent=(phase==="in"&&tea!==null)?"今日のお茶 あと"+tea+"杯":"";}
+function drawTea(){try{var tn=timeOfDay().name;el("tod").textContent=tn;el("hud-tod").textContent=tn+(tea!==null?"　お茶 あと"+tea+"杯":"");}catch(e){}el("tea").textContent=(phase==="in"&&tea!==null)?"今日のお茶 あと"+tea+"杯":"";}
 function loadTea(){
   return run(sb.rpc("tea_left")).then(function(r){
     if(!r.error&&typeof r.data==="number"&&isFinite(r.data))tea=Math.max(0,Math.min(TEAMAX,Math.floor(r.data)));
@@ -1614,7 +1658,7 @@ function visitRes(id,door){
   if(where==="mine")home=room;
   where="res";visitId=id;visitNm=r.name;visitCustom=[];host=null;
   room=r.room.map(function(c){return c.slice();});
-  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");
+  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");document.body.classList.remove("bagopen","strips");
   if(door)atDoor();else resetMe();liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent=r.name+"の部屋にいる";
   show("room");drawReplies();drawRoom();
@@ -1641,7 +1685,7 @@ function goOut(){
   var hs=houses(),owner=where==="mine"?uid:visitId,i=hs.indexOf(owner);
   if(where==="mine")home=room;
   where="town";visitId=null;visitNm="";visitCustom=[];host=null;room=[];
-  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");el("reply-panel").hidden=true;
+  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");document.body.classList.remove("bagopen","strips");el("reply-panel").hidden=true;
   if(i>=0){me.x=me.fx=i<6?0:TCOLS-1;me.y=me.fy=PL+(i%6)*8+4;me.dir=i<6?[1,0]:[-1,0];}else{me.x=me.fx=1;me.y=me.fy=TROWS-2;me.dir=[0,-1];}me.path=[];me.moving=false;me.jumping=false;me.jz=0;placePet();
   liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent="川沿いの町にいる";
@@ -1658,7 +1702,7 @@ function liveOwner(){return where==="town"?TOWN_ID:where==="mine"?uid:visitId;}
 function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<gw()&&y>=0&&y<gh();}
 function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
 function liveJoin(){
-  me.sit=null;
+  me.sit=null;try{syncPlay();}catch(e){}
   lobbyTrack();
   var owner=liveOwner();
   if(!sb||phase!=="in"||!isUuid(owner)){liveLeave();return;}
@@ -2175,10 +2219,10 @@ function syncScreen(){
     setLink(el("invite-pay"),cfg.payUrl);setLink(el("invite-report"),okContact(cfg.reportUrl));
   }
   if(!ins)el("report-panel").hidden=true;
-  drawTea();
+  drawTea();try{syncPlay();}catch(e){}
 }
 function show(v){
-  mode=v;syncScreen();
+  mode=v;syncScreen();document.body.classList.remove("menu");syncPlay();
   if(phase!=="in")return;
   if(mode==="make")drawBase();else if(mode==="room"){hint();actNow="";syncAct();}else if(mode==="people")drawPeople();
   else if(mode==="dress")drawDresser();
@@ -2203,7 +2247,7 @@ el("go-jump").addEventListener("click",act);
 el("dress-back").addEventListener("click",function(){show("room");});
 el("say-go").addEventListener("click",function(){speak();sayOut();});
 /* パソコン：話し終えたら文字欄から抜け、矢印と WASD で歩けるように戻す */
-function sayOut(){var i=el("say-in");if(document.activeElement===i&&!/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||""))i.blur();}
+function sayOut(){var i=el("say-in");if(document.body.classList.contains("play")){i.blur();document.body.classList.remove("saying");return;}if(document.activeElement===i&&!/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||""))i.blur();}
 el("say-in").addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.target.blur();}});
 rc.addEventListener("pointerdown",function(){var a=document.activeElement;if(a&&a.id==="say-in")a.blur();});
 /* 文字を打つときは、携帯の文字盤に隠れないよう、部屋と「ひとこと」が見える位置まで動かす */
@@ -2372,13 +2416,19 @@ function sndTick(){
 }
 function sndSet(on){
   if(on&&!snd.ctx&&!sndInit()){setStatus("この端末では音を出せない。");return;}
-  snd.on=on;var b=el("snd");b.setAttribute("aria-pressed",String(on));b.textContent=on?"音 入":"音 切";
+  snd.on=on;["snd","hud-snd"].forEach(function(k){var b=el(k);b.setAttribute("aria-pressed",String(on));b.textContent=on?"音 入":"音 切";});
   try{localStorage.setItem("rokujo-snd",on?"1":"0");}catch(e){}
   if(!snd.ctx)return;var c=snd.ctx;
   if(on){try{c.resume();}catch(e){}snd.next=c.currentTime+.1;snd.out.gain.setTargetAtTime(.6,c.currentTime,.8);clearInterval(snd.timer);snd.timer=setInterval(sndTick,200);}
   else{snd.out.gain.setTargetAtTime(0,c.currentTime,.3);clearInterval(snd.timer);setTimeout(function(){if(!snd.on)try{c.suspend();}catch(e){}},800);}
 }
 el("snd").addEventListener("click",function(){sndSet(!snd.on);});
+el("hud-snd").addEventListener("click",function(){sndSet(!snd.on);});
+el("hud-menu").addEventListener("click",function(){var on=!document.body.classList.contains("menu");document.body.classList.toggle("menu",on);el("hud-menu").setAttribute("aria-expanded",String(on));});
+el("hud-strips").addEventListener("click",function(){document.body.classList.toggle("strips");});
+/* 話す：押すと、文字欄が文字盤のすぐ上に出る。話したら閉じる */
+el("hud-say").addEventListener("click",function(){document.body.classList.add("saying");var i=el("say-in");i.focus();});
+el("say-in").addEventListener("blur",function(){setTimeout(function(){if(document.activeElement!==el("say-in"))document.body.classList.remove("saying");},150);});
 /* 前に「入」にしていた人は、最初に画面に触れたときに鳴らす（ブラウザの決まりで、触れる前は鳴らせない） */
 document.addEventListener("pointerdown",function first(e){document.removeEventListener("pointerdown",first);
   if(e.target&&e.target.id==="snd")return;try{if(localStorage.getItem("rokujo-snd")==="1"&&!snd.on)sndSet(true);}catch(_){}});
@@ -2387,11 +2437,26 @@ document.addEventListener("visibilitychange",function(){if(!snd.ctx)return;try{i
 /* ---- 始める ---- */
 try{R3=init3d();}catch(e){R3=null;}
 /* 立体のときは、画面の形を携帯に合わせて縦に伸ばす（横長 14:9 のままだと小さかった） */
-function fitStage(){if(!R3)return;var w=rc.parentNode.clientWidth||W,vh=window.innerHeight||800;
+/* 携帯（指で触る画面か、幅640px以下）で部屋か街を見ているときは、画面だけで遊ぶ形にする */
+function playWanted(){var coarse=false;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(e){}return !!R3&&phase==="in"&&mode==="room"&&(coarse||window.innerWidth<=640);}
+function syncPlay(){
+  var on=playWanted(),b=document.body;b.classList.toggle("play",on);
+  if(!on){b.classList.remove("menu","saying","strips");el("view-room").style.top="";el("view-room").style.height="";}
+  else{fitPlay();el("hud-place").textContent=where==="town"?"川沿いの町":where==="mine"?"自分の部屋":visitNm+"の部屋";}
+  b.classList.toggle("away",where!=="mine");el("hud-strips").hidden=where!=="res";
+  fitStage();
+}
+/* 文字盤が開いても、見えている所に合わせる */
+function fitPlay(){var v=el("view-room"),vv=window.visualViewport;v.style.top=(vv?vv.offsetTop:0)+"px";v.style.height=(vv?vv.height:window.innerHeight)+"px";}
+try{if(window.visualViewport){window.visualViewport.addEventListener("resize",function(){if(document.body.classList.contains("play")){fitPlay();fitStage();}});
+  window.visualViewport.addEventListener("scroll",function(){if(document.body.classList.contains("play"))fitPlay();});}}catch(e){}
+function fitStage(){if(!R3)return;
+  if(document.body.classList.contains("play")){var bw=rc.parentNode.clientWidth||W,bh=rc.parentNode.clientHeight||H,ph=Math.max(200,Math.round(W*bh/bw));if(ph!==H){H=ph;rc.height=H*2;}return;}
+  var w=rc.parentNode.clientWidth||W,vh=window.innerHeight||800;
   /* 街は縦に長く（通りを見下ろす）、部屋は少し縦長（部屋が横長なので） */
   var hh=w<640?Math.min(w*(where==="town"?1.15:.86),vh*.62):w/1.556,nh=Math.max(240,Math.round(W*hh/w));
   if(nh!==H){H=nh;rc.height=H*2;}}
-if(R3){el("room3d").hidden=false;fitStage();window.addEventListener("resize",fitStage);requestAnimationFrame(loop3);}
+if(R3){el("room3d").hidden=false;fitStage();window.addEventListener("resize",function(){syncPlay();});requestAnimationFrame(loop3);}
 room=emptyRoom();drawPal();drawEditor();left();syncScreen();
 (function(){
   var lib=null;try{lib=window.supabase;}catch(e){}
