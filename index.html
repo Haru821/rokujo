@@ -206,6 +206,7 @@ body.play.strips #reply-panel:not([hidden]){display:flex}
     <div class="hud" id="hud">
       <span class="hud-place" id="hud-place"></span>
       <span class="hud-tod" id="hud-tod"></span>
+      <button class="hbtn" id="hud-home" type="button" hidden>帰る</button>
       <button class="hbtn" id="hud-snd" type="button" aria-pressed="false">音 切</button>
       <button class="hbtn" id="hud-menu" type="button" aria-expanded="false" aria-label="ほかの画面へ">≡</button>
     </div>
@@ -2502,6 +2503,7 @@ function sndSet(on){
 }
 el("snd").addEventListener("click",function(){sndSet(!snd.on);});
 el("hud-snd").addEventListener("click",function(){sndSet(!snd.on);});
+el("hud-home").addEventListener("click",function(){goHome(false);});
 el("hud-menu").addEventListener("click",function(){var on=!document.body.classList.contains("menu");document.body.classList.toggle("menu",on);el("hud-menu").setAttribute("aria-expanded",String(on));});
 el("hud-strips").addEventListener("click",function(){document.body.classList.toggle("strips");});
 /* 話す：押すと、文字欄が文字盤のすぐ上に出る。話したら閉じる */
@@ -2521,7 +2523,7 @@ function syncPlay(){
   var on=playWanted(),b=document.body;b.classList.toggle("play",on);
   if(!on){b.classList.remove("menu","saying","strips");el("view-room").style.top="";el("view-room").style.height="";}
   else{fitPlay();el("hud-place").textContent=where==="town"?"川沿いの町":where==="mine"?"自分の部屋":visitNm+"の部屋";}
-  b.classList.toggle("away",where!=="mine");el("hud-strips").hidden=where!=="res";
+  b.classList.toggle("away",where!=="mine");el("hud-strips").hidden=where!=="res";el("hud-home").hidden=where==="mine";
   fitStage();
 }
 /* 文字盤が開いても、見えている所に合わせる */
