@@ -34,6 +34,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 #room{width:100%;height:auto;image-rendering:auto;cursor:pointer;touch-action:none}
 .room-box{position:relative}
+@media (max-width:640px){.room-box{margin-left:-16px;margin-right:-16px}}
 #room3d{position:absolute;inset:0;width:100%;height:100%;display:block;background:#05060c}
 #room{position:relative}
 .controls{display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -566,15 +567,15 @@ function init3d(){
   "vec3 moonC(vec3 alb,vec3 P,vec3 N){return alb*uSunC*moonlit(P)*max(dot(N,MOON),0.);}",
   "vec3 tone(vec3 c){c*=1.6;c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);c=pow(clamp(c,0.,1.),vec3(1./2.2));",
   "vec2 u=gl_FragCoord.xy/uRes;c*=mix(.6,1.,smoothstep(1.15,.35,length((u-.5)*vec2(1.2,1.))));",
-  "c+=(hash(gl_FragCoord.xy+fract(uTime*.7)*91.)-.5)*.02;return c;}"].join("\n");
+  "return c;}"].join("\n");
   var ROOM_VS="#version 300 es\nlayout(location=0)in vec3 aP;layout(location=1)in vec3 aN;layout(location=2)in vec2 aU;layout(location=3)in vec2 aM;\nuniform mat4 uVP;out vec3 vP;out vec3 vN;out vec2 vU;flat out float vMat;out float vSeed;\nvoid main(){vP=aP;vN=aN;vU=aU;vMat=aM.x;vSeed=aM.y;gl_Position=uVP*vec4(aP,1.);}";
   var ROOM_FS="#version 300 es\n"+COMMON+"\nuniform sampler2D uScroll;in vec3 vP;in vec3 vN;in vec2 vU;flat in float vMat;in float vSeed;out vec4 o;\n"+[
   "void main(){int m=int(vMat+.5);vec3 N=normalize(vN);vec3 alb=vec3(.5);float ks=0.,sh=20.;vec3 emit=vec3(0.);",
   "if(m==0){float u=vU.x,v=vU.y;",
   "  if(v<.035||v>.865){alb=lin(vec3(.12,.13,.12))*(.75+.5*noise(vec2(u*260.,v*40.)));ks=.05;sh=30.;}",
-  "  else{float st=sin(u*418.9);float g=fbm(vec2(u*2.5,v*28.)+abs(vSeed)*7.);",
+  "  else{float aa=1.-smoothstep(.25,.6,fwidth(u*66.7));float st=sin(u*418.9)*aa;float g=fbm(vec2(u*2.5,v*28.)+abs(vSeed)*7.);",
   "    alb=lin(mix(vec3(.58,.54,.31),vec3(.80,.74,.49),.35+.35*st*.5+.5*g))*(.88+.24*hash(vec2(floor(v*70.),abs(vSeed))));",
-  "    vec3 T=vSeed>0.?vec3(1,0,0):vec3(0,0,1);N=normalize(N+T*cos(u*418.9)*.22);ks=.10;sh=18.;}",
+  "    vec3 T=vSeed>0.?vec3(1,0,0):vec3(0,0,1);N=normalize(N+T*cos(u*418.9)*.22*aa);ks=.10;sh=18.;}",
   "  float e=min(u,1.8-u);alb*=mix(.35,1.,smoothstep(.0,.006,e));}",
   "else if(m==2){alb=lin(vec3(.74,.65,.50))*(.80+.30*fbm(vU*38.))*(.94+.12*noise(vU*420.));}",
   "else if(m==3){float gr=sin(vU.y*95.+fbm(vU*vec2(1.5,22.))*9.);alb=lin(mix(vec3(.28,.17,.10),vec3(.45,.30,.18),gr*.5+.5));ks=.10;sh=40.;}",
@@ -634,7 +635,7 @@ function init3d(){
   "  float k=1.-smoothstep(.012,.03,min(g.x/3.,g.y/4.)*3.);float wood=max(max(fr,k),m==23?step(q.y,.2):0.);",
   "  alb=wood>.5?lin(vec3(.26,.16,.09)):lin(mix(vec3(.24,.22,.20),vec3(.90,.85,.72),lit));if(wood<.5)emit=vec3(1.,.62,.30)*(.004+.55*lit)*(1.-.75*uDay);}",
   /* 瓦 */
-  "else if(m==24){float r=fract(vU.y/.11);float c=fract(vU.x/.2);vec3 t=mix(vec3(.20,.24,.30),vec3(.16,.17,.20),hs);",
+  "else if(m==24){float ta=1.-smoothstep(.3,.7,max(fwidth(vU.y/.11),fwidth(vU.x/.2)));float r=mix(.6,fract(vU.y/.11),ta);float c=mix(.5,fract(vU.x/.2),ta);vec3 t=mix(vec3(.20,.24,.30),vec3(.16,.17,.20),hs);",
   "  alb=lin(t)*(.5+.5*smoothstep(0.,.8,r))*(.75+.45*smoothstep(.0,.18,min(c,1.-c)));ks=.30;sh=30.;}",
   "else if(m==25){alb=lin(vec3(.30,.19,.11))*(.8+.3*fbm(vP.xy*vec2(3.,20.)+vP.z));ks=.06;}",
   "else if(m==26){alb=lin(vec3(.84,.81,.74))*(.85+.2*fbm(vU*20.));}",
@@ -793,7 +794,7 @@ function init3d(){
   /* 切り絵の紙は cut() の絵（白い縁つき）をそのまま使う。同じ絵は使い回す */
   var texCache=Object.create(null),texN=0;
   function spriteTex(key,px){var t=texCache[key];if(t)return t;if(texN>300){for(var k in texCache)gl.deleteTexture(texCache[k]);texCache=Object.create(null);texN=0;}
-    t=mkTex(cut(key,px),true);texCache[key]=t;texN++;return t;}
+    t=mkTex(cut(key,px),true);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.generateMipmap(gl.TEXTURE_2D);texCache[key]=t;texN++;return t;}
   /* 掛け軸：その部屋の主のいちばん新しい短冊を、筆の字で縦に書く */
   var sc=document.createElement("canvas");sc.width=320;sc.height=304;var scT=mkTex(sc,false),scText=null;
   function drawScroll(text){var g=sc.getContext("2d");g.fillStyle="#efe6d0";g.fillRect(0,0,320,304);g.fillStyle="#e6dcc3";g.fillRect(10,8,300,288);g.fillStyle="#f6efdd";g.fillRect(20,18,280,268);
@@ -840,8 +841,9 @@ function init3d(){
   function setCam(c,t,f){camP=c;tgt=t;FOV=f;PROJ=persp(FOV,W/H,.1,60);fz=norm(sub(camP,tgt));fx=norm(cross([0,1,0],fz));fy=cross(fz,fx);
     VP=mul(PROJ,[fx[0],fy[0],fz[0],0,fx[1],fy[1],fz[1],0,fx[2],fy[2],fz[2],0,-dot(fx,camP),-dot(fy,camP),-dot(fz,camP),1]);}
   /* 部屋は固定の向き。街は自分を追って横へ動く */
-  function roomCam(){setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
-  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL));setCam([RX/2,3.5,fz+4.7],[RX/2,.15,fz-1.3],.8);return fz;}
+  function fovFor(base,half){var a=W/H;return Math.max(base,2*Math.atan(Math.tan(half)/a));}
+  function roomCam(){var tall=W/H<1.3;if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
+  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL));setCam([RX/2,3.5,fz+4.7],[RX/2,.15,fz-1.3],fovFor(.8,.52));return fz;}
   roomCam();
   function clip(p){var x=p[0],y=p[1],z=p[2];return [VP[0]*x+VP[4]*y+VP[8]*z+VP[12],VP[1]*x+VP[5]*y+VP[9]*z+VP[13],VP[3]*x+VP[7]*y+VP[11]*z+VP[15]];}
   var list=[],blobs=[],collecting=false;
@@ -925,12 +927,13 @@ function timeOfDay(){
   return o;
 }
 /* 立体のときは、決まった間隔で描き直す（行灯のゆらぎ）。部屋を見ていないときは描かない */
-var todT=0,lastPlaza=false;
+var todT=0,lastPlaza=false,stageFor="";
 function loop3(now){
   requestAnimationFrame(loop3);
   if(!R3||phase!=="in"||mode!=="room"||document.hidden)return;
   rx.setTransform(2,0,0,2,0,0);rx.clearRect(0,0,W,H);
   if(now-todT>3000){todT=now;drawTea();}
+  if(where!==stageFor){stageFor=where;fitStage();}
   /* 広場に入ったら、ひとこと案内する */
   var inPlaza=where==="town"&&me.y<PL;if(inPlaza!==lastPlaza){lastPlaza=inPlaza;if(inPlaza&&!me.sit)setStatus("広場。人が集まれる。縁台に座れる。");}
   R3.begin();drawSprites();
@@ -2303,7 +2306,12 @@ document.addEventListener("visibilitychange",function(){if(!snd.ctx)return;try{i
 
 /* ---- 始める ---- */
 try{R3=init3d();}catch(e){R3=null;}
-if(R3){el("room3d").hidden=false;requestAnimationFrame(loop3);}
+/* 立体のときは、画面の形を携帯に合わせて縦に伸ばす（横長 14:9 のままだと小さかった） */
+function fitStage(){if(!R3)return;var w=rc.parentNode.clientWidth||W,vh=window.innerHeight||800;
+  /* 街は縦に長く（通りを見下ろす）、部屋は少し縦長（部屋が横長なので） */
+  var hh=w<640?Math.min(w*(where==="town"?1.15:.86),vh*.62):w/1.556,nh=Math.max(240,Math.round(W*hh/w));
+  if(nh!==H){H=nh;rc.height=H*2;}}
+if(R3){el("room3d").hidden=false;fitStage();window.addEventListener("resize",fitStage);requestAnimationFrame(loop3);}
 room=emptyRoom();drawPal();drawEditor();left();syncScreen();
 (function(){
   var lib=null;try{lib=window.supabase;}catch(e){}
