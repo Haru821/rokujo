@@ -151,6 +151,17 @@ body.play.strips #reply-panel:not([hidden]){display:flex}
 .zk canvas{width:64px;height:64px;image-rendering:pixelated;display:block;margin:0 auto}
 .zk .zn{font-size:13px}.zk .zm{font-size:11px;color:var(--mute);min-height:14px}
 .zk.no .zn{color:var(--mute)}
+.bowl-pick{margin-top:10px;padding:8px;border:2px dashed var(--line)}
+.bowl-pick .hint{margin:0 0 6px}
+/* 携帯：荷物は下に横1列。透けて、部屋と自分が見える（2026-11-17、はる） */
+body.play #bag:not([hidden]){max-height:none;overflow:visible;padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));background:rgba(21,24,43,.45)!important;border-top-color:rgba(240,162,60,.35)}
+body.play #bag .row{margin:0 0 4px}body.play #bag h2{font-size:14px;margin:0}
+body.play #bag .inv{display:flex;overflow-x:auto;gap:6px;padding-bottom:2px;scrollbar-width:thin}
+body.play #bag .item{flex:0 0 68px;padding:4px 2px;background:rgba(32,36,74,.4);font-size:11px}
+body.play #bag .item canvas{width:36px;height:36px}
+body.play #bag .bowl-pick{margin-top:6px;padding:4px;background:rgba(21,24,43,.35)}
+body.play #bag .bowl-pick .hint{font-size:12px;margin:0 0 4px}
+body.play #bag .actions{display:none}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -246,6 +257,7 @@ body.play.strips #reply-panel:not([hidden]){display:flex}
         <span class="count" id="count"></span>
       </div>
       <div class="inv" id="inv"></div>
+      <div class="bowl-pick" id="bowl-pick" hidden><p class="hint">金魚鉢に入れる魚を選ぶ</p><div class="inv" id="bowl-inv"></div></div>
       <div class="actions">
         <button class="btn small" id="clear-room">部屋の物を全部しまう</button>
       </div>
@@ -1336,9 +1348,17 @@ function itemButton(it,fn){
   if(it.custom){var m=document.createElement("span");m.className="mine";m.textContent="自作";b.appendChild(m);}
   b.addEventListener("click",function(){fn(it);});return b;
 }
-function drawInv(){inv.textContent="";myItems().forEach(function(it){inv.appendChild(itemButton(it,putOut));});}
+/* 金魚鉢は1つにまとめ、押すと魚を選ぶ（2026-11-17、はる：金魚鉢で荷物が埋まる） */
+function isBowl(it){return it.fish!=null&&it.fish!==16;}
+function drawInv(){inv.textContent="";var bowls=[];
+  myItems().forEach(function(it){if(isBowl(it)){bowls.push(it);return;}inv.appendChild(itemButton(it,putOut));});
+  var pk=el("bowl-pick"),bi=el("bowl-inv");bi.textContent="";
+  if(!bowls.length){pk.hidden=true;return;}
+  var b=itemButton({px:bowls[0].px,name:"金魚鉢（"+bowls.length+"種）"},function(){pk.hidden=!pk.hidden;b.setAttribute("aria-expanded",String(!pk.hidden));});
+  b.setAttribute("aria-expanded",String(!pk.hidden));inv.appendChild(b);
+  bowls.forEach(function(it){bi.appendChild(itemButton({px:it.px,name:FISH[it.fish].n,id:it.id,top:it.top,src:it},function(){putOut(it);pk.hidden=true;b.setAttribute("aria-expanded","false");}));});}
 function findMine(id){var a=myItems();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
-function drawBase(){baseEl.textContent="";myItems().forEach(function(it){baseEl.appendChild(itemButton(it,useBase));});
+function drawBase(){baseEl.textContent="";myItems().forEach(function(it){if(!isBowl(it))baseEl.appendChild(itemButton(it,useBase));});
   var cur=lastBase&&findMine(lastBase);discard.hidden=!(cur&&cur.custom);}
 function putOut(it){
   if(me.moving||me.jumping)return;if(where!=="mine"){setStatus("人の部屋の物は動かせない。");return;}var f=front();
