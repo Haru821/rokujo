@@ -2370,10 +2370,11 @@ function checkNotif(){
 function badge(id,base,nv){var b=el(id);b.textContent=base;if(nv>0){var sp=mk("span","badge",String(nv));sp.setAttribute("aria-label","新しいもの"+nv+"件");b.appendChild(sp);}}
 function drawBadges(){badge("tab-letter","手紙",notif.l);badge("tab-post","短冊",notif.r);
   var t=notif.l+notif.r,m=el("hud-menu");m.textContent="≡";if(t>0){var sp=mk("span","badge",String(Math.min(99,t)));m.appendChild(sp);}}
-/* 手紙の画面を開いたら手紙を、短冊の画面を開いたら返事を、見たことにする */
+/* 手紙の画面を開いたら手紙を、短冊の画面を開いたら返事を、見たことにする。
+   データベースの時刻は1000分の1秒より細かいので、見た所は1000分の1秒だけ先にする（そうしないと最後の1通が残る） */
 function markSeen(which){
-  if(which==="l"){var ml=0;letters.forEach(function(x){if(x.to===uid&&x.t>ml)ml=x.t;});seenSet("l",ml||Date.now());notif.l=0;}
-  if(which==="r"){var my=Object.create(null);strips.forEach(function(p){if(p.owner===uid)my[p.id]=1;});var mr=0;replies.forEach(function(x){if(my[x.strip]&&x.author!==uid&&x.t>mr)mr=x.t;});seenSet("r",mr||Date.now());notif.r=0;}
+  if(which==="l"){var ml=0;letters.forEach(function(x){if(x.to===uid&&x.t>ml)ml=x.t;});seenSet("l",ml?ml+1:Date.now());notif.l=0;}
+  if(which==="r"){var my=Object.create(null);strips.forEach(function(p){if(p.owner===uid)my[p.id]=1;});var mr=0;replies.forEach(function(x){if(my[x.strip]&&x.author!==uid&&x.t>mr)mr=x.t;});seenSet("r",mr?mr+1:Date.now());notif.r=0;}
   drawBadges();
 }
 setInterval(function(){if(!document.hidden)checkNotif();},45000);
