@@ -33,6 +33,9 @@ h1{margin:0;font-size:26px;font-weight:400;letter-spacing:.12em}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 #room{width:100%;height:auto;image-rendering:auto;cursor:pointer;touch-action:none}
+.room-box{position:relative}
+#room3d{position:absolute;inset:0;width:100%;height:100%;display:block;background:#05060c}
+#room{position:relative}
 .controls{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .pad{display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:6px}
 .pad .btn,.acts .btn{padding:0;font-size:22px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
@@ -162,7 +165,7 @@ a.btn{display:block;text-decoration:none;text-align:center}
   </div>
 
   <section id="view-room" hidden>
-    <canvas id="room" width="1120" height="720" aria-label="六畳の部屋"></canvas>
+    <div class="room-box"><canvas id="room3d" hidden></canvas><canvas id="room" width="1120" height="720" aria-label="六畳の部屋"></canvas></div>
     <div class="stick" id="stick" hidden><span class="stick-knob" id="stick-knob"></span></div>
     <div class="controls">
       <div class="pad" aria-label="歩く操作">
@@ -409,7 +412,7 @@ var MAT=[[0,0,1,2],[3,4,1,2],[3,4,5,5]];
 function mat(cx,cy){return MAT[Math.floor(cy/2)][Math.floor(cx/2)];}
 /* 立版古：奥へすぼまる箱の中に、紙の板として家具を立てる。歩くと視点が横にずれて、手前と奥が違う速さで動く */
 var T=62.5,CX0=280,YF=340,VP=-146.8,KP=0.613,WH=210,cam=0,cutCache={};
-function pr(X,Z,hh){var s=1/(1+KP*(1-Z/ROWS));return [CX0+(X-COLS/2)*T*s+cam*T*(1-s),VP+(YF-VP)*s-(hh||0)*s,s];}
+function pr(X,Z,hh){if(R3)return R3.proj(X,Z);var s=1/(1+KP*(1-Z/ROWS));return [CX0+(X-COLS/2)*T*s+cam*T*(1-s),VP+(YF-VP)*s-(hh||0)*s,s];}
 function quad(p,fill){rx.beginPath();rx.moveTo(p[0][0],p[0][1]);for(var i=1;i<p.length;i++)rx.lineTo(p[i][0],p[i][1]);rx.closePath();rx.fillStyle=fill;rx.fill();}
 function edge(a,b,col,w){rx.beginPath();rx.moveTo(a[0],a[1]);rx.lineTo(b[0],b[1]);rx.strokeStyle=col;rx.lineWidth=w;rx.stroke();}
 function bw(X0,X1,h0,h1,col){quad([pr(X0,0,h0),pr(X1,0,h0),pr(X1,0,h1),pr(X0,0,h1)],col);}
@@ -420,8 +423,8 @@ function cut(id,px){
   for(i=0;i<N*N;i++)if(px[i]){g.fillStyle=PAL[px[i]];g.fillRect(i%N+1,Math.floor(i/N)+1,1,1);}
   cutCache[id]=c;return c;
 }
-function shadow(X,Z){var b=pr(X,Z,0),sc=T*b[2]/32;rx.fillStyle="rgba(60,55,30,0.28)";rx.beginPath();rx.ellipse(b[0],b[1]+2*sc,13*sc,3.2*sc,0,0,6.2832);rx.fill();}
-function stand(id,px,X,Z,lift){var b=pr(X,Z,0),sc=T*b[2]/32;rx.drawImage(cut(id,px),b[0]-17*sc,b[1]-29*sc-lift*sc,34*sc,34*sc);}
+function shadow(X,Z){if(R3&&R3.collecting){R3.blob(X,Z);return;}var b=pr(X,Z,0),sc=T*b[2]/32;rx.fillStyle="rgba(60,55,30,0.28)";rx.beginPath();rx.ellipse(b[0],b[1]+2*sc,13*sc,3.2*sc,0,0,6.2832);rx.fill();}
+function stand(id,px,X,Z,lift){if(R3&&R3.collecting){R3.stand(id,px,X,Z,lift);return;}var b=pr(X,Z,0),sc=T*b[2]/32;rx.drawImage(cut(id,px),b[0]-17*sc,b[1]-29*sc-lift*sc,34*sc,34*sc);}
 function wallText(){
   /* 壁の掛け軸は、その部屋の主のいちばん新しい短冊 */
   var who=where==="mine"?uid:visitId;
@@ -429,6 +432,7 @@ function wallText(){
   return "";
 }
 function drawRoom(){
+  if(R3)return; /* 立体のときは loop3 が描く */
   var cx,cy,i,m;
   cam=(me.fx-(COLS-1)/2)*0.35;
   rx.setTransform(2,0,0,2,0,0);rx.imageSmoothingEnabled=false;
@@ -457,6 +461,15 @@ function drawRoom(){
   if(!me.moving&&fx0>=0&&fx0<COLS&&fy0>=0&&fy0<ROWS){
     var q=[pr(fx0+0.1,fy0+0.1),pr(fx0+0.9,fy0+0.1),pr(fx0+0.9,fy0+0.9),pr(fx0+0.1,fy0+0.9)];
     rx.beginPath();rx.moveTo(q[0][0],q[0][1]);for(i=1;i<4;i++)rx.lineTo(q[i][0],q[i][1]);rx.closePath();rx.strokeStyle="#f0a23c";rx.lineWidth=2;rx.stroke();}
+  drawSprites();
+  liveTags();
+  rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
+  if(!me.moving&&!me.jumping)syncAct();
+}
+
+/* 家具・人・猫を奥の列から順に立てる（2Dと立体で共通） */
+function drawSprites(){
+  var cx,cy,i;
   var dr=me.y;
   if(me.moving&&me.path.length)dr=Math.max(me.from[1],me.path[0][1]);
   var pk=Math.min(1,(performance.now()-pet.t0)/STEP),pfx=pet.from[0]+(pet.x-pet.from[0])*pk,pfy=pet.from[1]+(pet.y-pet.from[1])*pk,prow=pk<1?Math.max(pet.from[1],pet.y):pet.y;
@@ -477,6 +490,200 @@ function drawRoom(){
     }
     if(petKind&&cy===prow){shadow(pfx+0.5,pfy+0.82);stand("__pet"+petKind,PETPX[petKind],pfx+0.5,pfy+0.82,stackTop(Math.round(pfy)*COLS+Math.round(pfx)));}
   }
+}
+/* ---- 立体の部屋（WebGL2）：部屋は3Dで描き、家具と人は紙の切り絵として立てる（2026-11-17、はる）。
+   使えない端末では R3 が null のままで、今までの2Dで描く。#room は上に重ねた透明の層で、操作・名前・吹き出しを受け持つ ---- */
+var R3=null;
+function init3d(){
+  var cv=document.getElementById("room3d"),gl=null;
+  try{gl=cv.getContext("webgl2",{antialias:true,alpha:false});}catch(e){}
+  if(!gl)return null;
+  var CELL=0.45,RW=COLS*CELL,RD=ROWS*CELL,RH=2.4,S3=CELL/32*1.35;
+  var COMMON=[
+  "precision highp float;precision highp int;",
+  "uniform vec3 uLamp;uniform vec3 uLampCol;uniform vec3 uCam;uniform float uTime;uniform vec2 uRes;",
+  "const vec3 MOON=normalize(vec3(-0.22,0.5,-1.0));",
+  "const vec4 WIN=vec4(1.8,3.24,0.85,1.75);",
+  "float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}",
+  "float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);}",
+  "float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*noise(p);p*=2.03;a*=.5;}return s;}",
+  "vec3 lin(vec3 c){return pow(c,vec3(2.2));}",
+  "float bars(vec2 q){vec2 g=min(fract(q*vec2(4.,4.)),1.-fract(q*vec2(4.,4.)))/vec2(4.,4.);float b=1.-smoothstep(.005,.010,min(g.x,g.y));float e=1.-smoothstep(.018,.026,min(min(q.x,1.-q.x),min(q.y,1.-q.y)));return max(b,e);}",
+  "float moonlit(vec3 P){float t=P.z/(-MOON.z);vec3 W=P+MOON*t;vec2 q=vec2((W.x-WIN.x)/(WIN.y-WIN.x),(W.y-WIN.z)/(WIN.w-WIN.z));",
+  "float in_=smoothstep(-.02,.02,q.x)*smoothstep(1.02,.98,q.x)*smoothstep(-.02,.02,q.y)*smoothstep(1.02,.98,q.y);return in_*(1.-bars(q))*step(.02,P.z);}",
+  "float ao(vec3 P,vec3 N){float a=1.;a*=1.-.45*exp(-min(P.x,"+RW.toFixed(2)+"-P.x)*6.)*(1.-abs(N.x));a*=1.-.45*exp(-P.z*6.)*(1.-abs(N.z));",
+  "a*=1.-.35*exp(-P.y*9.)*(1.-abs(N.y));a*=1.-.30*exp(-(2.4-P.y)*6.)*(1.-abs(N.y));return a;}",
+  "vec3 lampAt(vec3 P,out vec3 L){vec3 d=uLamp-P;float d2=dot(d,d);L=d*inversesqrt(d2);return uLampCol/(d2+.05);}",
+  "vec3 ambient(vec3 alb,vec3 N,float a){return alb*a*(mix(vec3(.014,.017,.034),vec3(.028,.022,.017),N.y*.5+.5)+uLampCol*.016);}",
+  "vec3 moonC(vec3 alb,vec3 P,vec3 N){return alb*vec3(.30,.40,.78)*.65*moonlit(P)*max(dot(N,MOON),0.);}",
+  "vec3 tone(vec3 c){c*=1.6;c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);c=pow(clamp(c,0.,1.),vec3(1./2.2));",
+  "vec2 u=gl_FragCoord.xy/uRes;c*=mix(.6,1.,smoothstep(1.15,.35,length((u-.5)*vec2(1.2,1.))));",
+  "c+=(hash(gl_FragCoord.xy+fract(uTime*.7)*91.)-.5)*.02;return c;}"].join("\n");
+  var ROOM_VS="#version 300 es\nlayout(location=0)in vec3 aP;layout(location=1)in vec3 aN;layout(location=2)in vec2 aU;layout(location=3)in vec2 aM;\nuniform mat4 uVP;out vec3 vP;out vec3 vN;out vec2 vU;flat out float vMat;out float vSeed;\nvoid main(){vP=aP;vN=aN;vU=aU;vMat=aM.x;vSeed=aM.y;gl_Position=uVP*vec4(aP,1.);}";
+  var ROOM_FS="#version 300 es\n"+COMMON+"\nuniform sampler2D uScroll;in vec3 vP;in vec3 vN;in vec2 vU;flat in float vMat;in float vSeed;out vec4 o;\n"+[
+  "void main(){int m=int(vMat+.5);vec3 N=normalize(vN);vec3 alb=vec3(.5);float ks=0.,sh=20.;vec3 emit=vec3(0.);",
+  "if(m==0){float u=vU.x,v=vU.y;",
+  "  if(v<.035||v>.865){alb=lin(vec3(.12,.13,.12))*(.75+.5*noise(vec2(u*260.,v*40.)));ks=.05;sh=30.;}",
+  "  else{float st=sin(u*418.9);float g=fbm(vec2(u*2.5,v*28.)+abs(vSeed)*7.);",
+  "    alb=lin(mix(vec3(.58,.54,.31),vec3(.80,.74,.49),.35+.35*st*.5+.5*g))*(.88+.24*hash(vec2(floor(v*70.),abs(vSeed))));",
+  "    vec3 T=vSeed>0.?vec3(1,0,0):vec3(0,0,1);N=normalize(N+T*cos(u*418.9)*.22);ks=.10;sh=18.;}",
+  "  float e=min(u,1.8-u);alb*=mix(.35,1.,smoothstep(.0,.006,e));}",
+  "else if(m==2){alb=lin(vec3(.74,.65,.50))*(.80+.30*fbm(vU*38.))*(.94+.12*noise(vU*420.));}",
+  "else if(m==3){float gr=sin(vU.y*95.+fbm(vU*vec2(1.5,22.))*9.);alb=lin(mix(vec3(.28,.17,.10),vec3(.45,.30,.18),gr*.5+.5));ks=.10;sh=40.;}",
+  "else if(m==4){float seam=1.-smoothstep(.0,.01,min(fract(vU.y/.3),1.-fract(vU.y/.3))*.3);float bat=1.-smoothstep(.02,.03,abs(fract(vU.x/.45)-.5)*.45-.195);",
+  "  alb=lin(vec3(.50,.36,.22))*(.78+.32*fbm(vU*vec2(1.,14.)))*(1.-.5*seam)*(1.-.35*bat);}",
+  "else if(m==5){vec2 q=vU;if(bars(q)>.5){alb=lin(vec3(.20,.12,.07));ks=.06;}",
+  "  else{vec3 sky=mix(vec3(.004,.007,.028),vec3(.018,.03,.075),1.-q.y);float d=length((q-vec2(.74,.70))*vec2(1.6,1.));",
+  "    emit=sky+vec3(1.,.95,.82)*(smoothstep(.065,.055,d)*2.6+.20*exp(-d*10.));",
+  "    emit+=vec3(.9,.9,1.)*step(.992,hash(floor(q*vec2(110.,70.))))*.25;",
+  "    float roof=.20+.06*noise(vec2(q.x*9.,1.))+.05*step(.5,fract(q.x*2.9));if(q.y<roof)emit*=.06;",
+  "    emit+=vec3(1.,.7,.35)*.4*step(q.y,roof-.03)*step(.985,hash(floor(q*vec2(50.,30.))));alb=vec3(0.);}}",
+  "else if(m==6){vec4 t=texture(uScroll,vU);alb=lin(t.rgb);}",
+  "else if(m==8){alb=lin(vec3(.13,.08,.05));ks=.08;sh=30.;}",
+  "else{alb=lin(vec3(.06,.05,.05));}",
+  "vec3 L;vec3 lc=lampAt(vP,L);vec3 V=normalize(uCam-vP);float a=ao(vP,N);",
+  "vec3 c=alb*lc*max(dot(N,L),0.)+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*max(dot(N,L),0.);",
+  "c+=moonC(alb,vP,N)+ambient(alb,N,a)+emit;o=vec4(tone(c),1.);}"].join("\n");
+  /* mode 0：紙の切り絵　1：明かりが床に落とす影　2：足もとの影　3：目の前の畳の橙の印 */
+  var SPR_VS="#version 300 es\nlayout(location=0)in vec2 aC;uniform mat4 uVP;uniform vec3 uO;uniform vec2 uSz;uniform int uMode;uniform vec3 uLamp;\nout vec2 vT;out vec3 vP;out vec2 vL;out float vFade;\n"+[
+  "void main(){vec3 P=uO+vec3(aC.x*uSz.x,aC.y*uSz.y,0.);vT=vec2(aC.x+.5,1.-aC.y);vL=aC;vFade=1.;",
+  "if(uMode==1){vec3 Q=P;Q.y=min(Q.y,uLamp.y-.03);float t=uLamp.y/(uLamp.y-Q.y);vec3 Sh=uLamp+(Q-uLamp)*t;vec2 h=Sh.xz-uLamp.xz;float l=length(h);",
+  "  if(l>2.6){Sh.xz=uLamp.xz+h/l*2.6;}vFade=1.-smoothstep(.4,2.6,l);P=vec3(Sh.x,.003,Sh.z);}",
+  "if(uMode==2){P=uO+vec3(aC.x*uSz.x*.9,.002,(aC.y-.5)*uSz.x*.45);}",
+  "if(uMode==3){P=uO+vec3(aC.x*uSz.x,.004,(aC.y-.5)*uSz.x);}",
+  "vP=P;gl_Position=uVP*vec4(P,1.);}"].join("\n");
+  var SPR_FS="#version 300 es\n"+COMMON+"\nuniform sampler2D uTex;uniform int uMode;uniform float uGlow;uniform float uShadow;in vec2 vT;in vec3 vP;in vec2 vL;in float vFade;out vec4 o;\n"+[
+  "void main(){",
+  "if(uMode==3){vec2 q=vec2(vL.x+.5,vL.y);float e=min(min(q.x,1.-q.x),min(q.y,1.-q.y));if(e>.07||e<.02)discard;o=vec4(.94,.63,.24,.95);return;}",
+  "if(uMode==2){float r=length(vec2(vL.x*2.,(vL.y-.5)*2.));float a=clamp(1.-r*r,0.,1.);o=vec4(0,0,0,a*a*.55);return;}",
+  "vec4 t=texture(uTex,vT);if(t.a<.5)discard;",
+  "if(uMode==1){o=vec4(0,0,0,uShadow*vFade);return;}",
+  "vec3 alb=lin(t.rgb);vec3 N=vec3(0,0,1);vec3 L;vec3 lc=lampAt(vP,L);float nl=dot(N,L);",
+  "vec3 c=alb*lc*(max(nl,0.)*.9+.30*max(-nl,0.))+alb*vec3(.30,.40,.78)*.65*moonlit(vP)*.30+ambient(alb,N,1.)*1.5;",
+  /* 行灯の切り絵は、紙の黄色いところが光る */
+  "if(uGlow>0.){float warm=step(.75,t.r)*step(t.b,.45);c+=alb*warm*uGlow*(.9+.1*sin(uTime*7.));}",
+  "o=vec4(tone(c),1.);}"].join("\n");
+  function shd(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+  function prog(vs,fs){var p=gl.createProgram();gl.attachShader(p,shd(gl.VERTEX_SHADER,vs));gl.attachShader(p,shd(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+    var u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(var i=0;i<n;i++){var nm=gl.getActiveUniform(p,i).name;u[nm]=gl.getUniformLocation(p,nm);}return {p:p,u:u};}
+  var PR,PS;try{PR=prog(ROOM_VS,ROOM_FS);PS=prog(SPR_VS,SPR_FS);}catch(e){return null;}
+  /* 部屋の形：位置3・向き3・模様の座標2・材質2 */
+  var V=[];
+  function quad(a,b,c,d,n,ua,ub,uc,ud,m,seed){[a,b,c,a,c,d].forEach(function(p,i){var uv=[ua,ub,uc,ua,uc,ud][i];V.push(p[0],p[1],p[2],n[0],n[1],n[2],uv[0],uv[1],m,seed||0);});}
+  function box(x0,y0,z0,x1,y1,z1,m,faces){faces=faces||"xXyYzZ";
+    if(faces.indexOf("Y")>=0)quad([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],[0,1,0],[x0,z1],[x1,z1],[x1,z0],[x0,z0],m);
+    if(faces.indexOf("y")>=0)quad([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[0,-1,0],[x0,z0],[x1,z0],[x1,z1],[x0,z1],m);
+    if(faces.indexOf("Z")>=0)quad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1],[x0,y0],[x1,y0],[x1,y1],[x0,y1],m);
+    if(faces.indexOf("z")>=0)quad([x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[0,0,-1],[x1,y0],[x0,y0],[x0,y1],[x1,y1],m);
+    if(faces.indexOf("X")>=0)quad([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[1,0,0],[z1,y0],[z0,y0],[z0,y1],[z1,y1],m);
+    if(faces.indexOf("x")>=0)quad([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[-1,0,0],[z0,y0],[z1,y0],[z1,y1],[z0,y1],m);}
+  /* 畳6枚。2Dの部屋と同じ並び（奥に横2枚、左手前に横2枚、右手前に縦2枚） */
+  function tatami(x0,z0,alongX,seed){if(alongX){var x1=x0+1.8,z1=z0+.9;quad([x0,0,z1],[x1,0,z1],[x1,0,z0],[x0,0,z0],[0,1,0],[0,.9],[1.8,.9],[1.8,0],[0,0],0,seed);}
+    else{var x2=x0+.9,z2=z0+1.8;quad([x0,0,z2],[x2,0,z2],[x2,0,z0],[x0,0,z0],[0,1,0],[1.8,0],[1.8,.9],[0,.9],[0,0],0,-seed);}}
+  tatami(0,0,true,1);tatami(1.8,0,true,2);tatami(0,.9,true,3);tatami(0,1.8,true,4);tatami(1.8,.9,false,5);tatami(2.7,.9,false,6);
+  quad([0,0,0],[0,0,RD],[0,RH,RD],[0,RH,0],[1,0,0],[0,0],[RD,0],[RD,RH],[0,RH],2);
+  quad([RW,0,RD],[RW,0,0],[RW,RH,0],[RW,RH,RD],[-1,0,0],[RD,0],[0,0],[0,RH],[RD,RH],2);
+  quad([0,0,0],[0,RH,0],[RW,RH,0],[RW,0,0],[0,0,1],[0,0],[0,RH],[RW,RH],[RW,0],2);
+  quad([0,RH,0],[0,RH,RD],[RW,RH,RD],[RW,RH,0],[0,-1,0],[0,0],[0,RD],[RW,RD],[RW,0],4);
+  box(0,0,0,.11,RH,.11,3,"XZ");box(RW-.11,0,0,RW,RH,.11,3,"xZ");box(0,0,RD-.12,.12,RH,RD,3,"XZ");box(RW-.12,0,RD-.12,RW,RH,RD,3,"xZ");
+  box(0,1.86,0,RW,1.94,.04,3,"Zy");box(0,1.86,0,.04,1.94,RD,3,"Xy");box(RW-.04,1.86,0,RW,1.94,RD,3,"xy");
+  box(0,0,0,RW,.035,.018,3,"ZY");box(0,0,0,.018,.035,RD,3,"XY");box(RW-.018,0,0,RW,.035,RD,3,"xY");
+  box(-.02,-.06,RD,RW+.02,.005,RD+.06,3,"YZ");box(-.04,-.32,-.04,RW+.04,-.06,RD+.08,9,"Z");
+  quad([1.8,.85,.004],[3.24,.85,.004],[3.24,1.75,.004],[1.8,1.75,.004],[0,0,1],[0,0],[1,0],[1,1],[0,1],5);
+  box(1.76,.81,0,3.28,.85,.05,8,"ZY");box(1.76,1.75,0,3.28,1.79,.05,8,"Zy");
+  /* 壁の短冊（掛け軸）：2Dの部屋と同じ、奥の壁の左寄り */
+  var SX0=.24,SX1=1.52,SY0=.52,SY1=1.74;
+  quad([SX0,SY0,.006],[SX1,SY0,.006],[SX1,SY1,.006],[SX0,SY1,.006],[0,0,1],[0,1],[1,1],[1,0],[0,0],6);
+  box(SX0-.04,SY1-.03,.004,SX1+.04,SY1+.02,.03,8,"ZYy");box(SX0-.04,SY0-.02,.004,SX1+.04,SY0+.03,.03,8,"ZYy");
+  var roomN=V.length/10;
+  var vaoR=gl.createVertexArray();gl.bindVertexArray(vaoR);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
+  [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
+  var vaoS=gl.createVertexArray();gl.bindVertexArray(vaoS);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-.5,0,.5,0,.5,1,-.5,0,.5,1,-.5,1]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,8,0);
+  gl.bindVertexArray(null);
+  function mkTex(src,nearest){var t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+    var f=nearest?gl.NEAREST:gl.LINEAR;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,f);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,f);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t;}
+  /* 切り絵の紙は cut() の絵（白い縁つき）をそのまま使う。同じ絵は使い回す */
+  var texCache=Object.create(null),texN=0;
+  function spriteTex(key,px){var t=texCache[key];if(t)return t;if(texN>300){for(var k in texCache)gl.deleteTexture(texCache[k]);texCache=Object.create(null);texN=0;}
+    t=mkTex(cut(key,px),true);texCache[key]=t;texN++;return t;}
+  /* 掛け軸：その部屋の主のいちばん新しい短冊を、筆の字で縦に書く */
+  var sc=document.createElement("canvas");sc.width=320;sc.height=304;var scT=mkTex(sc,false),scText=null;
+  function drawScroll(text){var g=sc.getContext("2d");g.fillStyle="#efe6d0";g.fillRect(0,0,320,304);g.fillStyle="#e6dcc3";g.fillRect(10,8,300,288);g.fillStyle="#f6efdd";g.fillRect(20,18,280,268);
+    var txt=text.replace(/\s+/g,""),FS=26,PX=32,PY=30,rowsN=8,colsN=8;if(txt.length>rowsN*colsN)txt=txt.slice(0,rowsN*colsN-1)+"…";
+    g.fillStyle="#1b1622";g.font=FS+'px "Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif';g.textAlign="center";g.textBaseline="middle";
+    for(var i=0;i<txt.length;i++){var ch=txt.charAt(i),tx=290-Math.floor(i/rowsN)*PX-PX/2,ty=26+(i%rowsN)*PY+PY/2;
+      if("、。".indexOf(ch)>=0)g.fillText(ch,tx+FS*.55,ty-FS*.5);
+      else if("ー〜…—".indexOf(ch)>=0){g.save();g.translate(tx,ty);g.rotate(Math.PI/2);g.fillText(ch,0,0);g.restore();}
+      else g.fillText(ch,tx,ty);}
+    if(!txt){g.fillStyle="#8a8578";g.font='18px "DotGothic16",monospace';g.fillText("（白紙）",160,152);}
+    g.fillStyle="#c2452d";g.fillRect(36,250,14,14);
+    gl.bindTexture(gl.TEXTURE_2D,scT);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,sc);}
+  try{document.fonts.load('26px "Yuji Syuku"',"短冊").then(function(){scText=null;},function(){});}catch(e){}
+  /* 見る位置は固定（2Dの部屋とほぼ同じ向き） */
+  var FOV=.68,tgt=[RW/2,.62,1.25],camP=[RW/2,1.85,1.25+4.45];
+  function persp(f,a,n,fa){var t=1/Math.tan(f/2);return [t/a,0,0,0,0,t,0,0,0,0,(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0];}
+  function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+  function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}function norm(a){var l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];}
+  var fz=norm(sub(camP,tgt)),fx=norm(cross([0,1,0],fz)),fy=cross(fz,fx);
+  var VIEW=[fx[0],fy[0],fz[0],0,fx[1],fy[1],fz[1],0,fx[2],fy[2],fz[2],0,-dot(fx,camP),-dot(fy,camP),-dot(fz,camP),1];
+  function mul(a,b){var o=new Array(16);for(var i=0;i<4;i++)for(var j=0;j<4;j++){var s=0;for(var k=0;k<4;k++)s+=a[k*4+j]*b[i*4+k];o[i*4+j]=s;}return o;}
+  var PROJ=persp(FOV,W/H,.1,30),VP=mul(PROJ,VIEW);
+  function clip(p){var x=p[0],y=p[1],z=p[2];return [VP[0]*x+VP[4]*y+VP[8]*z+VP[12],VP[1]*x+VP[5]*y+VP[9]*z+VP[13],VP[3]*x+VP[7]*y+VP[11]*z+VP[15]];}
+  var list=[],blobs=[],collecting=false;
+  return {
+    S3:S3,
+    get collecting(){return collecting;},
+    /* 2Dの pr() の代わり：マスの位置（X、Z）を画面の点にし、切り絵1画素が画面で何画素かを s で返す */
+    proj:function(X,Z){var c=clip([X*CELL,0,Z*CELL]),w=c[2]||1e-6;return [(c[0]/w*.5+.5)*W,(1-(c[1]/w*.5+.5))*H,32/T*S3*(H/2)*PROJ[5]/w];},
+    begin:function(){list=[];blobs=[];collecting=true;},
+    stand:function(key,px,X,Z,lift){list.push({k:key,px:px,x:X*CELL,z:Z*CELL,y:lift*S3});},
+    blob:function(X,Z){blobs.push([X*CELL,Z*CELL]);},
+    /* 触った所から床をたどって、どのマスか。部屋の外なら壁の短冊を触ったかを返す */
+    pick:function(px,py){var nx=px/W*2-1,ny=1-py/H*2,t=Math.tan(FOV/2),d=norm([-fz[0]+nx*t*W/H*fx[0]+ny*t*fy[0],-fz[1]+nx*t*W/H*fx[1]+ny*t*fy[1],-fz[2]+nx*t*W/H*fx[2]+ny*t*fy[2]]);
+      if(d[1]<0){var k=-camP[1]/d[1],x=camP[0]+d[0]*k,z=camP[2]+d[2]*k;if(x>=0&&x<RW&&z>=0&&z<RD)return {cell:[Math.floor(x/CELL),Math.floor(z/CELL)]};}
+      if(d[2]<0){var k2=-camP[2]/d[2],wx=camP[0]+d[0]*k2,wy=camP[1]+d[1]*k2;if(wx>=SX0&&wx<=SX1&&wy>=SY0&&wy<=SY1)return {wall:true};}
+      return null;},
+    render:function(now,marker){
+      collecting=false;
+      var dpr=Math.min(window.devicePixelRatio||1,1.5),w=Math.max(1,Math.round(cv.clientWidth*dpr)),h=Math.max(1,Math.round(cv.clientHeight*dpr));
+      if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+      var wt=wallText();if(wt!==scText){scText=wt;drawScroll(wt);}
+      /* 明かり：部屋の行灯（いちばん手前のもの）。なければ天井の弱い明かり */
+      var lamp=null,lampGlow=null,i;
+      for(i=0;i<list.length;i++)if(list[i].k==="p-andon"&&(!lamp||list[i].z>lamp[2])){lamp=[list[i].x,list[i].y+11*S3+.04,list[i].z+.03];lampGlow=list[i];}
+      var fl=reduce?1:(.92+.05*Math.sin(now*.0071)+.03*Math.sin(now*.0233+1.3)),lc=lamp?[.62*fl,.36*fl,.16*fl]:[.30,.24,.17];
+      if(!lamp)lamp=[RW/2,2.1,RD/2];
+      var shadowA=lampGlow?.62:.0;
+      function set(P){gl.uniformMatrix4fv(P.u.uVP,false,VP);gl.uniform3fv(P.u.uLamp,lamp);gl.uniform3fv(P.u.uLampCol,lc);gl.uniform3fv(P.u.uCam,camP);
+        gl.uniform1f(P.u.uTime,reduce?0:now/1000);gl.uniform2f(P.u.uRes,cv.width,cv.height);}
+      gl.viewport(0,0,cv.width,cv.height);gl.clearColor(.02,.024,.045,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.enable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);
+      gl.useProgram(PR.p);set(PR);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,scT);gl.uniform1i(PR.u.uScroll,0);
+      gl.bindVertexArray(vaoR);gl.drawArrays(gl.TRIANGLES,0,roomN);
+      gl.disable(gl.CULL_FACE);gl.useProgram(PS.p);set(PS);gl.uniform1i(PS.u.uTex,0);gl.uniform1f(PS.u.uShadow,shadowA);gl.bindVertexArray(vaoS);
+      var SZ=34*S3;
+      function one(s,mode){gl.bindTexture(gl.TEXTURE_2D,spriteTex(s.k,s.px));gl.uniform3f(PS.u.uO,s.x,s.y-5*S3,s.z);gl.uniform2f(PS.u.uSz,SZ,SZ);gl.uniform1i(PS.u.uMode,mode);
+        gl.uniform1f(PS.u.uGlow,mode===0&&s===lampGlow?1.6:0);gl.drawArrays(gl.TRIANGLES,0,6);}
+      list.forEach(function(s){one(s,0);});
+      gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-4);
+      gl.uniform1f(PS.u.uGlow,0);
+      blobs.forEach(function(b){gl.uniform3f(PS.u.uO,b[0],0,b[1]);gl.uniform2f(PS.u.uSz,SZ,SZ);gl.uniform1i(PS.u.uMode,2);gl.drawArrays(gl.TRIANGLES,0,6);});
+      if(shadowA>0)list.forEach(function(s){if(s!==lampGlow)one(s,1);});
+      if(marker){gl.uniform3f(PS.u.uO,(marker[0]+.5)*CELL,0,(marker[1]+.5)*CELL);gl.uniform2f(PS.u.uSz,CELL*.86,CELL*.86);gl.uniform1i(PS.u.uMode,3);gl.drawArrays(gl.TRIANGLES,0,6);}
+      gl.disable(gl.POLYGON_OFFSET_FILL);gl.depthMask(true);gl.disable(gl.BLEND);
+    }
+  };
+}
+/* 立体のときは、決まった間隔で描き直す（行灯のゆらぎ）。部屋を見ていないときは描かない */
+function loop3(now){
+  requestAnimationFrame(loop3);
+  if(!R3||phase!=="in"||mode!=="room"||document.hidden)return;
+  rx.setTransform(2,0,0,2,0,0);rx.clearRect(0,0,W,H);
+  R3.begin();drawSprites();
+  var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<COLS&&fy0>=0&&fy0<ROWS)?[fx0,fy0]:null;
+  R3.render(now,mk);
   liveTags();
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
   if(!me.moving&&!me.jumping)syncAct();
@@ -589,11 +796,14 @@ rc.addEventListener("click",function(e){
   if(swiped){swiped=false;return;}
   var r=rc.getBoundingClientRect();
   var px=(e.clientX-r.left)/r.width*W,py=(e.clientY-r.top)/r.height*H;
-  var s=(py-VP)/(YF-VP),cx=-1,cy=-1;
-  if(s>0){cy=Math.floor(ROWS*(1-(1/s-1)/KP));cx=Math.floor(COLS/2+(px-CX0-cam*T*(1-s))/(T*s));}
+  var cx=-1,cy=-1,onWall=false;
+  if(R3){var hit=R3.pick(px,py);if(hit&&hit.cell){cx=hit.cell[0];cy=hit.cell[1];}onWall=!!(hit&&hit.wall);}
+  else{var s=(py-VP)/(YF-VP);
+    if(s>0){cy=Math.floor(ROWS*(1-(1/s-1)/KP));cx=Math.floor(COLS/2+(px-CX0-cam*T*(1-s))/(T*s));}
+    var k1=pr(0.5,0,202),k2=pr(3.4,0,48);onWall=px>=k1[0]&&px<=k2[0]&&py>=k1[1]&&py<=k2[1];}
   if(cx<0||cx>=COLS||cy<0||cy>=ROWS){
-    var k1=pr(0.5,0,202),k2=pr(3.4,0,48),wt=wallText();
-    if(px>=k1[0]&&px<=k2[0]&&py>=k1[1]&&py<=k2[1])setStatus(wt?"壁の短冊：「"+wt+"」":"壁の短冊はまだ白紙。「短冊」で書くと、ここに出る。");
+    var wt=wallText();
+    if(onWall)setStatus(wt?"壁の短冊：「"+wt+"」":"壁の短冊はまだ白紙。「短冊」で書くと、ここに出る。");
     else setStatus("そこは壁。畳の上をタップする。");
     return;}
   walkTo(cx,cy);
@@ -1703,6 +1913,8 @@ el("logout").addEventListener("click",function(){
 });
 
 /* ---- 始める ---- */
+try{R3=init3d();}catch(e){R3=null;}
+if(R3){el("room3d").hidden=false;requestAnimationFrame(loop3);}
 room=emptyRoom();drawPal();drawEditor();left();syncScreen();
 (function(){
   var lib=null;try{lib=window.supabase;}catch(e){}
