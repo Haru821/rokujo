@@ -112,39 +112,6 @@ a.btn{display:block;text-decoration:none;text-align:center}
 .say .btn{flex:0 0 auto}
 .person .on{flex:0 0 auto;font-size:12px;color:var(--lamp)}
 .person .on::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--lamp);box-shadow:0 0 6px var(--lamp)}
-/* 画面だけで遊ぶ形（携帯）：部屋と街を画面いっぱいに、操作は絵の上に重ねる */
-.hud,.hud-say,.hud-strips{display:none}
-.hbtn{padding:6px 10px;background:rgba(21,24,43,.72);color:var(--ink);border:2px solid rgba(240,162,60,.55);font:inherit;font-size:13px;cursor:pointer;touch-action:manipulation}
-body.play header,body.play #tabs,body.play #foot,body.play #logout,body.play .wrap>p.hint,body.play #notice{display:none!important}
-body.play.menu #tabs{display:flex!important;position:fixed;top:calc(52px + env(safe-area-inset-top,0px));left:8px;right:8px;z-index:40;flex-wrap:wrap}
-body.play #view-room{position:fixed;left:0;right:0;top:0;height:100vh;z-index:30;background:var(--night);display:block;padding:0}
-body.play .room-box{position:absolute;inset:0;margin:0}
-body.play #room{width:100%;height:100%}
-body.play .hud{display:flex;align-items:center;gap:8px;position:absolute;top:0;left:0;right:0;z-index:3;padding:calc(8px + env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) 8px max(10px,env(safe-area-inset-left,0px));background:linear-gradient(rgba(21,24,43,.85),rgba(21,24,43,0))}
-.hud-place{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
-.hud-tod{color:var(--mute);font-size:12px;white-space:nowrap}
-body.play .controls{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:3;display:block}
-body.play .pad{display:none}
-body.play .acts{width:auto;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:10px}
-body.play .acts #go-jump{width:88px;height:88px;min-height:0;border-radius:50%;font-size:16px;box-shadow:0 0 18px rgba(240,162,60,.45);grid-column:auto}
-body.play .acts #bag-btn,body.play .acts #pick-btn{min-height:0;padding:8px 12px;font-size:13px;background:rgba(21,24,43,.72);width:88px}
-body.play.away .acts #bag-btn,body.play.away .acts #pick-btn{display:none}
-body.play .hud-say{display:block;position:absolute;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:3;width:64px;height:64px;border-radius:50%;padding:0}
-body.play .hud-strips:not([hidden]){display:block;position:absolute;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:3}
-body.play.saying .hud-say,body.play.saying .controls,body.play.saying .hud-strips{display:none!important}
-body.play .say{display:none;position:absolute;left:0;right:0;bottom:0;z-index:4;padding:8px max(10px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));background:rgba(21,24,43,.94)}
-body.play.saying .say{display:flex}
-body.play #status{position:absolute;top:calc(50px + env(safe-area-inset-top,0px));left:10px;right:10px;z-index:2;min-height:0;padding:6px 10px;font-size:13px;background:rgba(32,36,74,.72);border-left-width:3px;pointer-events:none}
-body.play #status:empty{display:none}
-body.play #status.fade{opacity:0;transition:opacity .8s}
-body.play #visit-bar{display:none!important}
-body.play #bag:not([hidden]),body.play.strips #reply-panel:not([hidden]){position:absolute;left:0;right:0;bottom:0;z-index:5;max-height:52%;overflow:auto;padding:12px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));background:rgba(21,24,43,.96);border-top:2px solid var(--line)}
-body.play #reply-panel{display:none}
-/* 荷物や短冊を開いているときは、ボタンをその上に出す（閉じられるように） */
-body.play.bagopen .controls{bottom:calc(52% + 12px);z-index:6}
-body.play.strips .hud-strips:not([hidden]){bottom:calc(52% + 12px);z-index:6}
-body.play.bagopen .hud-say,body.play.strips .hud-say{display:none}
-body.play.strips #reply-panel:not([hidden]){display:flex}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -202,14 +169,6 @@ body.play.strips #reply-panel:not([hidden]){display:flex}
 
   <section id="view-room" hidden>
     <div class="room-box"><canvas id="room3d" hidden></canvas><canvas id="room" width="1120" height="720" aria-label="六畳の部屋"></canvas></div>
-    <div class="hud" id="hud">
-      <span class="hud-place" id="hud-place"></span>
-      <span class="hud-tod" id="hud-tod"></span>
-      <button class="hbtn" id="hud-snd" type="button" aria-pressed="false">音 切</button>
-      <button class="hbtn" id="hud-menu" type="button" aria-expanded="false" aria-label="ほかの画面へ">≡</button>
-    </div>
-    <button class="hbtn hud-say" id="hud-say" type="button">話す</button>
-    <button class="hbtn hud-strips" id="hud-strips" type="button" hidden>短冊</button>
     <div class="stick" id="stick" hidden><span class="stick-knob" id="stick-knob"></span></div>
     <div class="say">
       <label class="say-label" for="say-in">ひとこと</label>
@@ -591,7 +550,7 @@ function init3d(){
   "precision highp float;precision highp int;",
   "uniform vec3 uLamp;uniform vec3 uLampCol;uniform vec3 uCam;uniform float uTime;uniform vec2 uRes;",
   /* 時刻：uDay は昼の明るさ（0〜1）、空の上と地平の色、日（月）の光、まわりの光、霞 */
-  "uniform float uRain;uniform float uSnow;uniform float uMist;uniform float uDay;uniform vec3 uSkyT;uniform vec3 uSkyH;uniform vec3 uSunC;uniform vec3 uAmbS;uniform vec3 uAmbG;uniform vec3 uFogC;",
+  "uniform float uDay;uniform vec3 uSkyT;uniform vec3 uSkyH;uniform vec3 uSunC;uniform vec3 uAmbS;uniform vec3 uAmbG;uniform vec3 uFogC;",
   "const vec3 MOON=normalize(vec3(-0.22,0.5,-1.0));",
   "const vec4 WIN=vec4(1.8,3.24,0.85,1.75);",
   "float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}",
@@ -620,14 +579,12 @@ function init3d(){
   "  float e=min(u,1.8-u);alb*=mix(.35,1.,smoothstep(.0,.006,e));}",
   "else if(m==2){alb=lin(vec3(.74,.65,.50))*(.80+.30*fbm(vU*38.))*(.94+.12*noise(vU*420.));}",
   "else if(m==3){float gr=sin(vU.y*95.+fbm(vU*vec2(1.5,22.))*9.);alb=lin(mix(vec3(.28,.17,.10),vec3(.45,.30,.18),gr*.5+.5));ks=.10;sh=40.;}",
-  "else if(m==4){if(uCam.y>2.35)discard;float seam=1.-smoothstep(.0,.01,min(fract(vU.y/.3),1.-fract(vU.y/.3))*.3);float bat=1.-smoothstep(.02,.03,abs(fract(vU.x/.45)-.5)*.45-.195);",
+  "else if(m==4){float seam=1.-smoothstep(.0,.01,min(fract(vU.y/.3),1.-fract(vU.y/.3))*.3);float bat=1.-smoothstep(.02,.03,abs(fract(vU.x/.45)-.5)*.45-.195);",
   "  alb=lin(vec3(.50,.36,.22))*(.78+.32*fbm(vU*vec2(1.,14.)))*(1.-.5*seam)*(1.-.35*bat);}",
   "else if(m==5){vec2 q=vU;if(bars(q)>.5){alb=lin(vec3(.20,.12,.07));ks=.06;}",
   "  else{vec3 sky=mix(uSkyT,uSkyH,1.-q.y);float d=length((q-vec2(.74,.70))*vec2(1.6,1.));",
   "    emit=sky+(1.-uDay)*vec3(1.,.95,.82)*(smoothstep(.065,.055,d)*2.6+.20*exp(-d*10.));",
-  "    emit+=step(uDay,.12)*(1.-uMist)*vec3(.9,.9,1.)*step(.992,hash(floor(q*vec2(110.,70.))))*.25;",
-  "    emit+=uRain*vec3(.55,.6,.7)*.25*step(.93,hash(vec2(floor(q.x*60.),floor(q.y*8.+uTime*9.+hash(vec2(floor(q.x*60.),1.))*8.))));",
-  "    emit+=uSnow*vec3(.9)*.5*step(.985,hash(floor(vec2(q.x*40.+sin(uTime+q.y*9.)*.6,q.y*30.+uTime*1.5))));",
+  "    emit+=step(uDay,.12)*vec3(.9,.9,1.)*step(.992,hash(floor(q*vec2(110.,70.))))*.25;",
   "    float roof=.20+.06*noise(vec2(q.x*9.,1.))+.05*step(.5,fract(q.x*2.9));if(q.y<roof)emit=mix(emit*.06,uSkyH*.35,uDay);",
   "    emit+=(1.-uDay)*vec3(1.,.7,.35)*.4*step(q.y,roof-.03)*step(.985,hash(floor(q*vec2(50.,30.))));alb=vec3(0.);}}",
   "else if(m==6){vec4 t=texture(uScroll,vU);alb=lin(t.rgb);}",
@@ -710,14 +667,11 @@ function init3d(){
   /* 苔・植え込み */
   "else if(m==35){alb=lin(vec3(.18,.32,.14))*(.6+.6*fbm(vP.xz*14.+vP.y*9.));}",
   "else{alb=lin(vec3(.06,.05,.05));}",
-  "if(N.y>.45&&m!=30&&m!=31){float sn=uSnow*smoothstep(.45,.8,N.y)*(.75+.25*noise(vP.xz*6.));alb=mix(alb,vec3(.86,.88,.92),sn);ks=mix(ks,.05,sn);}",
-  "if(uRain>0.&&N.y>.45&&m!=30){alb*=1.-.35*uRain;ks=max(ks,.55*uRain);sh=max(sh,60.);}",
-  "if(m==30&&uRain>0.){float rr=step(.985,hash(floor(vP.xz*vec2(14.,10.))+floor(uTime*6.)));emit+=vec3(.5,.6,.7)*rr*.25*uRain;}",
   "vec3 V=normalize(uCam-vP);vec3 c=vec3(0.);",
   "for(int i=0;i<6;i++){vec3 d=uL[i]-vP;float d2=dot(d,d);vec3 L=d*inversesqrt(d2);float nl=max(dot(N,L),0.);vec3 lc=uLc[i]/(d2+.10);",
   "  c+=alb*lc*nl+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*nl;}",
   "float sv=sunVis(vP);c+=alb*uSunC*.5*(.35+.65*max(dot(N,normalize(vec3(-.3,.8,.5))),0.))*mix(.25,1.,sv)+alb*mix(uAmbG,uAmbS,N.y*.5+.5)*mix(.75,1.,sv);",
-  "c+=emit;float fd=length(vP-uCam);c=mix(c,uFogC,1.-exp(-fd*(.035-.022*uDay+.022*uMist)));o=vec4(tone(c),1.);}"].join("\n");
+  "c+=emit;float fd=length(vP-uCam);c=mix(c,uFogC,1.-exp(-fd*(.035-.022*uDay)));o=vec4(tone(c),1.);}"].join("\n");
   var PR,PS,PT;try{PR=prog(ROOM_VS,ROOM_FS);PS=prog(SPR_VS,SPR_FS);PT=prog(ROOM_VS,TOWN_FS);}catch(e){return null;}
   /* 仕上げ：影の深さ、花びらと蛍、ぼかしとにじみ。どれかが使えなくても、今までどおり描く */
   var FX=null;
@@ -727,12 +681,10 @@ function init3d(){
     var PART_VS="#version 300 es\nuniform mat4 uVP;uniform float uT;uniform vec3 uC;uniform int uK;uniform float uPx;out float vA;out vec3 vCol;\n"+
       "float h(float n){return fract(sin(n*12.9898)*43758.5453);}\n"+
       "void main(){float i=float(gl_VertexID);vec3 P;float a=1.;\n"+
-      " if(uK==2){float x=-.6+h(i)*5.7,z=uC.z-8.+h(i+2.)*12.,fall=fract(h(i+3.)+uT*1.6);P=vec3(x,3.6-fall*3.8,z);a=.7;vCol=vec3(.82,.88,.98);}\n"+
-      " else if(uK==3){float x=-.5+h(i)*5.5,z=uC.z-8.+fract(h(i+7.)+uT*.01)*12.,fall=fract(h(i+3.)+uT*(.08+.05*h(i+5.)));P=vec3(x+sin(uT*.8+i)*.3,3.6-fall*3.7,z+cos(uT*.6+i)*.2);a=smoothstep(0.,.08,fall)*smoothstep(1.,.92,fall);vCol=vec3(.96,.97,1.);}\n"+
-      " else if(uK==0){float x=-.4+h(i)*5.3,z=uC.z-9.+fract(h(i+7.)+uT*.015)*13.,fall=fract(h(i+3.)+uT*(.05+.04*h(i+5.)));P=vec3(x+sin(uT*.9+i)*.25,3.4-fall*3.4,z+cos(uT*.7+i)*.2);a=smoothstep(0.,.1,fall)*smoothstep(1.,.85,fall);vCol=vec3(1.,.78,.86);}\n"+
+      " if(uK==0){float x=-.4+h(i)*5.3,z=uC.z-9.+fract(h(i+7.)+uT*.015)*13.,fall=fract(h(i+3.)+uT*(.05+.04*h(i+5.)));P=vec3(x+sin(uT*.9+i)*.25,3.4-fall*3.4,z+cos(uT*.7+i)*.2);a=smoothstep(0.,.1,fall)*smoothstep(1.,.85,fall);vCol=vec3(1.,.78,.86);}\n"+
       " else{float x=1.15+h(i)*2.2,z=uC.z-6.+h(i+2.)*10.;P=vec3(x+sin(uT*.6+i*3.)*.3,.25+h(i+4.)*.7+sin(uT*.9+i)*.1,z+cos(uT*.5+i*2.)*.3);a=pow(max(0.,sin(uT*1.7+i*20.)),3.);vCol=vec3(.85,1.,.45);}\n"+
-      " vec4 c=uVP*vec4(P,1.);gl_Position=c;gl_PointSize=min(32.,(uK==0?.06:uK==2?.16:uK==3?.05:.04)*uPx/max(c.w,.1));vA=a;}";
-    var PART_FS="#version 300 es\nprecision mediump float;precision highp int;in float vA;in vec3 vCol;uniform int uK;out vec4 o;void main(){vec2 d=gl_PointCoord-.5;if(uK==2){if(abs(d.x)>.035)discard;o=vec4(vCol,vA*(1.-abs(d.y)*1.6));return;}float r=length(d*vec2(1.,uK==0?1.6:1.));if(r>.5)discard;float a=uK==0||uK==3?(1.-smoothstep(.3,.5,r))*vA*.9:(1.-smoothstep(0.,.5,r))*vA;o=vec4(vCol*(uK==1?2.2:.95),a);}";
+      " vec4 c=uVP*vec4(P,1.);gl_Position=c;gl_PointSize=min(28.,(uK==0?.06:.04)*uPx/max(c.w,.1));vA=a;}";
+    var PART_FS="#version 300 es\nprecision mediump float;precision highp int;in float vA;in vec3 vCol;uniform int uK;out vec4 o;void main(){vec2 d=gl_PointCoord-.5;float r=length(d*vec2(1.,uK==0?1.6:1.));if(r>.5)discard;float a=uK==0?(1.-smoothstep(.3,.5,r))*vA*.85:(1.-smoothstep(0.,.5,r))*vA;o=vec4(vCol*(uK==0?.9:2.2),a);}";
     var PPV="#version 300 es\nout vec2 vUv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUv=p;gl_Position=vec4(p*2.-1.,0.,1.);}";
     var BLUR_FS="#version 300 es\nprecision mediump float;uniform sampler2D uTex;uniform vec2 uDir;in vec2 vUv;out vec4 o;void main(){vec4 c=texture(uTex,vUv)*.227;c+=(texture(uTex,vUv+uDir*1.385)+texture(uTex,vUv-uDir*1.385))*.316;c+=(texture(uTex,vUv+uDir*3.231)+texture(uTex,vUv-uDir*3.231))*.070;o=c;}";
     /* ジオラマ風：自分のいる高さはくっきり、上下ほどぼける。明るい所はにじむ */
@@ -936,9 +888,8 @@ function init3d(){
     VP=mul(PROJ,[fx[0],fy[0],fz[0],0,fx[1],fy[1],fz[1],0,fx[2],fy[2],fz[2],0,-dot(fx,camP),-dot(fy,camP),-dot(fz,camP),1]);}
   /* 部屋は固定の向き。街は自分を追って横へ動く */
   function fovFor(base,half){var a=W/H;return Math.max(base,2*Math.atan(Math.tan(half)/a));}
-  function roomCam(){var a=W/H,tall=a<1.3;/* とても縦長：部屋の幅が収まる距離を形から出し、斜め上から見下ろす */
-    if(a<.8){var d=1.95/(Math.tan(.5)*a);setCam([RW/2,.3+d*.85,1.35+d*.53],[RW/2,.3,1.35],1.0);return;}if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
-  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL));setCam([RX/2,3.5,fz+4.7],[RX/2,.15,fz-1.3],Math.min(1.15,fovFor(.8,.52)));return fz;}
+  function roomCam(){var tall=W/H<1.3;if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
+  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL));setCam([RX/2,3.5,fz+4.7],[RX/2,.15,fz-1.3],fovFor(.8,.52));return fz;}
   roomCam();
   function clip(p){var x=p[0],y=p[1],z=p[2];return [VP[0]*x+VP[4]*y+VP[8]*z+VP[12],VP[1]*x+VP[5]*y+VP[9]*z+VP[13],VP[3]*x+VP[7]*y+VP[11]*z+VP[15]];}
   var list=[],blobs=[],collecting=false;
@@ -963,7 +914,7 @@ function init3d(){
       var fl=reduce?1:(.92+.05*Math.sin(now*.0071)+.03*Math.sin(now*.0233+1.3)),i;
       var td=timeOfDay(),dim=1-.85*td.day;
       function base(P,lamp,lc){gl.uniformMatrix4fv(P.u.uVP,false,VP);gl.uniform3fv(P.u.uLamp,lamp);gl.uniform3fv(P.u.uLampCol,lc);gl.uniform3fv(P.u.uCam,camP);
-        gl.uniform1f(P.u.uDay,td.day);gl.uniform1f(P.u.uRain,td.w.rain);gl.uniform1f(P.u.uSnow,td.w.snow);gl.uniform1f(P.u.uMist,td.mist);gl.uniform3fv(P.u.uSkyT,td.skyT);gl.uniform3fv(P.u.uSkyH,td.skyH);gl.uniform3fv(P.u.uSunC,td.sun);gl.uniform3fv(P.u.uAmbS,td.ambS);gl.uniform3fv(P.u.uAmbG,td.ambG);gl.uniform3fv(P.u.uFogC,td.fog);
+        gl.uniform1f(P.u.uDay,td.day);gl.uniform3fv(P.u.uSkyT,td.skyT);gl.uniform3fv(P.u.uSkyH,td.skyH);gl.uniform3fv(P.u.uSunC,td.sun);gl.uniform3fv(P.u.uAmbS,td.ambS);gl.uniform3fv(P.u.uAmbG,td.ambG);gl.uniform3fv(P.u.uFogC,td.fog);
         gl.uniform1f(P.u.uTime,reduce?0:now/1000);gl.uniform2f(P.u.uRes,cv.width,cv.height);}
       var usePost=!!(FX&&FX.post&&fxSize(cv.width,cv.height));
       /* 街：日と月の影の深さを、ときどき描き直す（家が動かないので毎回は要らない） */
@@ -992,7 +943,7 @@ function init3d(){
         DECOR.forEach(function(d){list.push(d);});
         /* 切り絵は、いちばん近い明かりで照らし、その影を落とす */
         lampOf=function(s0){var b=near[0],bd=1e9;near.forEach(function(L){var dx=L.p[0]-s0.x,dz=L.p[2]-s0.z,dd=dx*dx+dz*dz;if(dd<bd){bd=dd;b=L;}});return b;};
-        gl.useProgram(PS.p);base(PS,near[0].p,near[0].c);gl.uniform1f(PS.u.uIn,0);gl.uniform3f(PS.u.uFill,.03+td.ambS[0]*.6+td.sun[0]*.10,.04+td.ambS[1]*.6+td.sun[1]*.10,.08+td.ambS[2]*.6+td.sun[2]*.10);gl.uniform1f(PS.u.uFog,.035-.022*td.day+.022*td.mist);shadowA=.40;
+        gl.useProgram(PS.p);base(PS,near[0].p,near[0].c);gl.uniform1f(PS.u.uIn,0);gl.uniform3f(PS.u.uFill,.03+td.ambS[0]*.6+td.sun[0]*.10,.04+td.ambS[1]*.6+td.sun[1]*.10,.08+td.ambS[2]*.6+td.sun[2]*.10);gl.uniform1f(PS.u.uFog,.035-.022*td.day);shadowA=.40;
       }else{
         roomCam();
         var wt=wallText();if(wt!==scText){scText=wt;drawScroll(wt);}
@@ -1019,10 +970,8 @@ function init3d(){
       /* 花びら（いつも）と蛍（夕方から夜、川のそば） */
       if(FX&&where==="town"&&!reduce){var fzP=Math.max(1.2,Math.min(TL-1,(me.fy+.5)*CELL));gl.useProgram(FX.part.p);gl.bindVertexArray(FX.vaoE);
         gl.uniformMatrix4fv(FX.part.u.uVP,false,VP);gl.uniform1f(FX.part.u.uT,now/1000);gl.uniform3f(FX.part.u.uC,RX/2,0,fzP);gl.uniform1f(FX.part.u.uPx,cv.height/2*PROJ[5]);
-        var pc=Math.round(90*td.w.petal);if(pc>0){gl.uniform1i(FX.part.u.uK,0);gl.drawArrays(gl.POINTS,0,pc);}
-        if(td.w.rain>.05){gl.uniform1i(FX.part.u.uK,2);gl.drawArrays(gl.POINTS,0,Math.round(260*td.w.rain));}
-        if(td.w.snow>.05){gl.uniform1i(FX.part.u.uK,3);gl.drawArrays(gl.POINTS,0,Math.round(200*td.w.snow));}
-        if(td.day<.4&&td.w.rain<.3&&td.w.snow<.3){gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.uniform1i(FX.part.u.uK,1);gl.drawArrays(gl.POINTS,0,36);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);}}
+        gl.uniform1i(FX.part.u.uK,0);gl.drawArrays(gl.POINTS,0,70);
+        if(td.day<.4){gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.uniform1i(FX.part.u.uK,1);gl.drawArrays(gl.POINTS,0,36);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);}}
       gl.depthMask(true);gl.disable(gl.BLEND);
       if(usePost){
         var W2=Math.max(1,cv.width>>1),H2=Math.max(1,cv.height>>1);
@@ -1046,26 +995,12 @@ var TOD={night:{skyT:[.003,.006,.02],skyH:[.016,.024,.06],sun:[.20,.26,.50],ambS
   gold:{skyT:[.10,.13,.30],skyH:[.95,.48,.22],sun:[1.1,.62,.30],ambS:[.10,.09,.12],ambG:[.09,.06,.045],fog:[.36,.24,.20]},
   day:{skyT:[.16,.34,.78],skyH:[.58,.72,.90],sun:[1.35,1.25,1.08],ambS:[.20,.25,.33],ambG:[.16,.14,.11],fog:[.46,.55,.66]}};
 function jstHour(){var h=(Date.now()%3600000)/3600000*24;try{if(typeof window.__rokujoHour==="number")h=window.__rokujoHour;}catch(e){}return h;}
-/* 天気：晴れ・曇り・雨・雪・桜。12分ごとに時計から選び、1分かけて移る。全員に同じ天気が見える（2026-11-17、はる） */
-var WEATHERS=[["晴れ",.35],["桜",.20],["曇り",.20],["雨",.15],["雪",.10]],WPERIOD=720000;
-function pickWeather(i){var x=Math.sin(i*127.1+311.7)*43758.5453;x-=Math.floor(x);for(var k=0;k<WEATHERS.length;k++){x-=WEATHERS[k][1];if(x<0)return k;}return 0;}
-function weatherAmounts(k){return [{cloud:0,rain:0,snow:0,petal:.25},{cloud:.1,rain:0,snow:0,petal:1},{cloud:.75,rain:0,snow:0,petal:0},{cloud:1,rain:1,snow:0,petal:0},{cloud:.85,rain:0,snow:1,petal:0}][k];}
-function weatherNow(){
-  var t=Date.now();try{if(typeof window.__rokujoWeather==="number"){var f=weatherAmounts(window.__rokujoWeather);f.name=WEATHERS[window.__rokujoWeather][0];return f;}}catch(e){}
-  var i=Math.floor(t/WPERIOD),cur=pickWeather(i),prev=pickWeather(i-1),m=Math.min(1,(t%WPERIOD)/60000),a=weatherAmounts(prev),b=weatherAmounts(cur),o={name:WEATHERS[cur][0]};
-  ["cloud","rain","snow","petal"].forEach(function(k){o[k]=a[k]+(b[k]-a[k])*m;});return o;
-}
 function timeOfDay(){
   var h=jstHour(),ss=function(a,b,x){var t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
   var wd=ss(6.3,8.5,h)*(1-ss(16,18,h)),bell=function(c){var d=(h-c)/1.2;return Math.exp(-d*d);};
   var wg=Math.max(bell(5.9),bell(17.6))*(1-wd),wn=Math.max(0,1-wd-wg),sum=wd+wg+wn,o={day:wd+.35*wg,h:h};
   ["skyT","skyH","sun","ambS","ambG","fog"].forEach(function(k){o[k]=[0,1,2].map(function(i){return (TOD.day[k][i]*wd+TOD.gold[k][i]*wg+TOD.night[k][i]*wn)/sum;});});
   o.name=h<5||h>=19?"夜":h<9?"朝":h<16?"昼":"夕方";
-  /* 天気を重ねる：雲は空を灰色にし、日差しを弱め、霞を濃くする。雪の日は少し明るい灰色 */
-  var w=weatherNow(),cl=w.cloud,gy=function(c,amt,bright){var l=(c[0]*.3+c[1]*.59+c[2]*.11)*bright;return c.map(function(v){return v+(l-v)*amt;});};
-  var br=1+.25*w.snow-.45*w.rain;o.skyT=gy(o.skyT,cl*.85,br);o.skyH=gy(o.skyH,cl*.8,br);o.fog=gy(o.fog,cl*.7,br*.85);
-  o.sun=o.sun.map(function(v){return v*(1-.7*cl);});o.ambS=o.ambS.map(function(v){return v*(1+.35*cl*o.day);});
-  o.w=w;o.wname=w.name;o.mist=Math.max(w.rain*.5,w.snow*.4,cl*.25);
   return o;
 }
 /* 立体のときは、決まった間隔で描き直す（行灯のゆらぎ）。部屋を見ていないときは描かない */
@@ -1078,7 +1013,7 @@ function loop3(now){
   /* 2秒ほど、1回の描画に45ミリ秒以上かかっていたら、仕上げの効果を切る */
   if(perf.last){var dt=now-perf.last;if(dt<500){perf.acc+=dt;perf.n++;}}perf.last=now;if(!perf.start)perf.start=now;
   if(perf.n>=60){if(now-perf.start>4000&&perf.acc/perf.n>(window.__rokujoFxLimit||45)&&!window.__rokujoKeepFx&&R3.lighten())setStatus("この端末では重いので、ぼかしと影を切った。");perf.n=0;perf.acc=0;}
-  if(where!==stageFor){stageFor=where;syncPlay();}
+  if(where!==stageFor){stageFor=where;fitStage();}
   /* 広場に入ったら、ひとこと案内する */
   var inPlaza=where==="town"&&me.y<PL;if(inPlaza!==lastPlaza){lastPlaza=inPlaza;if(inPlaza&&!me.sit)setStatus("広場。人が集まれる。縁台に座れる。");}
   R3.begin();drawSprites();
@@ -1133,8 +1068,8 @@ function jumpTick(now){
 }
 function walkTo(tx,ty){
   if(me.moving||me.jumping)return;
-  if(tx===me.x&&ty===me.y){act();return;}
   if(me.sit){me.sit=null;liveMe(me.x,me.y);}me.hop=false;
+  if(tx===me.x&&ty===me.y){setStatus("もうそこに立っている。");return;}
   if(!walkable(tx,ty)){if(where==="town"){setStatus(ty<PL?"そこには立てない。":"川がある。橋を渡る。");return;}setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
   var p=route(tx,ty);if(!p){setStatus("家具にふさがれて、そこまで歩けない。");return;}
   if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveMe(tx,ty);return;}
@@ -1214,8 +1149,7 @@ rc.addEventListener("click",function(e){
 
 /* ---- 荷物：目の前の畳に出す・拾う ---- */
 var inv=document.getElementById("inv"),statusEl=document.getElementById("status"),discard=document.getElementById("discard"),baseEl=document.getElementById("base"),bagEl=document.getElementById("bag"),bagBtn=document.getElementById("bag-btn");
-var stT=0;
-function setStatus(t){statusEl.textContent=t;statusEl.classList.remove("fade");clearTimeout(stT);stT=setTimeout(function(){statusEl.classList.add("fade");},5000);}
+function setStatus(t){statusEl.textContent=t;}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
 function hint(){if(where==="town"){setStatus("川沿いの町。両岸に通りがあり、橋で渡れる。家の戸の方を向き、橙のボタンで入る。明かりのついた家には、誰かがいる。");return;}setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。右の壁の奥の戸から外に出られる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。右の壁の奥の戸から外に出られる。");}
 function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
@@ -1245,9 +1179,8 @@ function pick(){
   var n=find(room[f[1]*COLS+f[0]].pop());save();drawRoom();count();setStatus("「"+(n?n.name:"家具")+"」を拾って荷物に入れた。");
 }
 function toggleBag(open){
-  if(!open)document.body.classList.remove("strips");
   if(open&&where!=="mine"){setStatus("人の部屋では荷物を開けない。");return;}
-  bagOpen=open;bagEl.hidden=!open;bagBtn.setAttribute("aria-pressed",String(open));document.body.classList.toggle("bagopen",open);
+  bagOpen=open;bagEl.hidden=!open;bagBtn.setAttribute("aria-pressed",String(open));
   if(open){drawInv();setStatus("出したい物をタップすると、目の前の畳に置く。");}else hint();
 }
 bagBtn.addEventListener("click",function(){toggleBag(!bagOpen);});
@@ -1571,7 +1504,7 @@ function discardFurn(cur){
 }
 
 /* ---- お茶：数えるのはデータ側 ---- */
-function drawTea(){try{var tn=timeOfDay().name;el("tod").textContent=tn;var wn=weatherNow().name;el("tod").textContent=tn+"・"+wn;el("hud-tod").textContent=tn+"・"+wn+(tea!==null?"　お茶 あと"+tea+"杯":"");}catch(e){}el("tea").textContent=(phase==="in"&&tea!==null)?"今日のお茶 あと"+tea+"杯":"";}
+function drawTea(){try{var tn=timeOfDay().name;el("tod").textContent=tn;}catch(e){}el("tea").textContent=(phase==="in"&&tea!==null)?"今日のお茶 あと"+tea+"杯":"";}
 function loadTea(){
   return run(sb.rpc("tea_left")).then(function(r){
     if(!r.error&&typeof r.data==="number"&&isFinite(r.data))tea=Math.max(0,Math.min(TEAMAX,Math.floor(r.data)));
@@ -1681,7 +1614,7 @@ function visitRes(id,door){
   if(where==="mine")home=room;
   where="res";visitId=id;visitNm=r.name;visitCustom=[];host=null;
   room=r.room.map(function(c){return c.slice();});
-  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");document.body.classList.remove("bagopen","strips");
+  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");
   if(door)atDoor();else resetMe();liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent=r.name+"の部屋にいる";
   show("room");drawReplies();drawRoom();
@@ -1708,7 +1641,7 @@ function goOut(){
   var hs=houses(),owner=where==="mine"?uid:visitId,i=hs.indexOf(owner);
   if(where==="mine")home=room;
   where="town";visitId=null;visitNm="";visitCustom=[];host=null;room=[];
-  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");document.body.classList.remove("bagopen","strips");el("reply-panel").hidden=true;
+  bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");el("reply-panel").hidden=true;
   if(i>=0){me.x=me.fx=i<6?0:TCOLS-1;me.y=me.fy=PL+(i%6)*8+4;me.dir=i<6?[1,0]:[-1,0];}else{me.x=me.fx=1;me.y=me.fy=TROWS-2;me.dir=[0,-1];}me.path=[];me.moving=false;me.jumping=false;me.jz=0;placePet();
   liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent="川沿いの町にいる";
@@ -1725,7 +1658,7 @@ function liveOwner(){return where==="town"?TOWN_ID:where==="mine"?uid:visitId;}
 function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<gw()&&y>=0&&y<gh();}
 function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
 function liveJoin(){
-  me.sit=null;try{syncPlay();}catch(e){}
+  me.sit=null;
   lobbyTrack();
   var owner=liveOwner();
   if(!sb||phase!=="in"||!isUuid(owner)){liveLeave();return;}
@@ -2242,10 +2175,10 @@ function syncScreen(){
     setLink(el("invite-pay"),cfg.payUrl);setLink(el("invite-report"),okContact(cfg.reportUrl));
   }
   if(!ins)el("report-panel").hidden=true;
-  drawTea();try{syncPlay();}catch(e){}
+  drawTea();
 }
 function show(v){
-  mode=v;syncScreen();document.body.classList.remove("menu");syncPlay();
+  mode=v;syncScreen();
   if(phase!=="in")return;
   if(mode==="make")drawBase();else if(mode==="room"){hint();actNow="";syncAct();}else if(mode==="people")drawPeople();
   else if(mode==="dress")drawDresser();
@@ -2270,7 +2203,7 @@ el("go-jump").addEventListener("click",act);
 el("dress-back").addEventListener("click",function(){show("room");});
 el("say-go").addEventListener("click",function(){speak();sayOut();});
 /* パソコン：話し終えたら文字欄から抜け、矢印と WASD で歩けるように戻す */
-function sayOut(){var i=el("say-in");if(document.body.classList.contains("play")){i.blur();document.body.classList.remove("saying");return;}if(document.activeElement===i&&!/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||""))i.blur();}
+function sayOut(){var i=el("say-in");if(document.activeElement===i&&!/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||""))i.blur();}
 el("say-in").addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.target.blur();}});
 rc.addEventListener("pointerdown",function(){var a=document.activeElement;if(a&&a.id==="say-in")a.blur();});
 /* 文字を打つときは、携帯の文字盤に隠れないよう、部屋と「ひとこと」が見える位置まで動かす */
@@ -2435,23 +2368,17 @@ function sndTick(){
     if(st%8===0)pluck(t,hz(st%16?-2:-5),.12);
     if(st%16===0)pad(t,[146.83,220,329.63],beat*14,.016);
     snd.next+=beat;}
-  var wr=weatherNow().rain;snd.waterG.gain.setTargetAtTime((where==="town"?.05:.01)+wr*(where==="town"?.09:.05),c.currentTime,1.5);
+  snd.waterG.gain.setTargetAtTime(where==="town"?.05:.01,c.currentTime,1.5);
 }
 function sndSet(on){
   if(on&&!snd.ctx&&!sndInit()){setStatus("この端末では音を出せない。");return;}
-  snd.on=on;["snd","hud-snd"].forEach(function(k){var b=el(k);b.setAttribute("aria-pressed",String(on));b.textContent=on?"音 入":"音 切";});
+  snd.on=on;var b=el("snd");b.setAttribute("aria-pressed",String(on));b.textContent=on?"音 入":"音 切";
   try{localStorage.setItem("rokujo-snd",on?"1":"0");}catch(e){}
   if(!snd.ctx)return;var c=snd.ctx;
   if(on){try{c.resume();}catch(e){}snd.next=c.currentTime+.1;snd.out.gain.setTargetAtTime(.6,c.currentTime,.8);clearInterval(snd.timer);snd.timer=setInterval(sndTick,200);}
   else{snd.out.gain.setTargetAtTime(0,c.currentTime,.3);clearInterval(snd.timer);setTimeout(function(){if(!snd.on)try{c.suspend();}catch(e){}},800);}
 }
 el("snd").addEventListener("click",function(){sndSet(!snd.on);});
-el("hud-snd").addEventListener("click",function(){sndSet(!snd.on);});
-el("hud-menu").addEventListener("click",function(){var on=!document.body.classList.contains("menu");document.body.classList.toggle("menu",on);el("hud-menu").setAttribute("aria-expanded",String(on));});
-el("hud-strips").addEventListener("click",function(){document.body.classList.toggle("strips");});
-/* 話す：押すと、文字欄が文字盤のすぐ上に出る。話したら閉じる */
-el("hud-say").addEventListener("click",function(){document.body.classList.add("saying");var i=el("say-in");i.focus();});
-el("say-in").addEventListener("blur",function(){setTimeout(function(){if(document.activeElement!==el("say-in"))document.body.classList.remove("saying");},150);});
 /* 前に「入」にしていた人は、最初に画面に触れたときに鳴らす（ブラウザの決まりで、触れる前は鳴らせない） */
 document.addEventListener("pointerdown",function first(e){document.removeEventListener("pointerdown",first);
   if(e.target&&e.target.id==="snd")return;try{if(localStorage.getItem("rokujo-snd")==="1"&&!snd.on)sndSet(true);}catch(_){}});
@@ -2460,26 +2387,11 @@ document.addEventListener("visibilitychange",function(){if(!snd.ctx)return;try{i
 /* ---- 始める ---- */
 try{R3=init3d();}catch(e){R3=null;}
 /* 立体のときは、画面の形を携帯に合わせて縦に伸ばす（横長 14:9 のままだと小さかった） */
-/* 携帯（指で触る画面か、幅640px以下）で部屋か街を見ているときは、画面だけで遊ぶ形にする */
-function playWanted(){var coarse=false;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(e){}return !!R3&&phase==="in"&&mode==="room"&&(coarse||window.innerWidth<=640);}
-function syncPlay(){
-  var on=playWanted(),b=document.body;b.classList.toggle("play",on);
-  if(!on){b.classList.remove("menu","saying","strips");el("view-room").style.top="";el("view-room").style.height="";}
-  else{fitPlay();el("hud-place").textContent=where==="town"?"川沿いの町":where==="mine"?"自分の部屋":visitNm+"の部屋";}
-  b.classList.toggle("away",where!=="mine");el("hud-strips").hidden=where!=="res";
-  fitStage();
-}
-/* 文字盤が開いても、見えている所に合わせる */
-function fitPlay(){var v=el("view-room"),vv=window.visualViewport;v.style.top=(vv?vv.offsetTop:0)+"px";v.style.height=(vv?vv.height:window.innerHeight)+"px";}
-try{if(window.visualViewport){window.visualViewport.addEventListener("resize",function(){if(document.body.classList.contains("play")){fitPlay();fitStage();}});
-  window.visualViewport.addEventListener("scroll",function(){if(document.body.classList.contains("play"))fitPlay();});}}catch(e){}
-function fitStage(){if(!R3)return;
-  if(document.body.classList.contains("play")){var bw=rc.parentNode.clientWidth||W,bh=rc.parentNode.clientHeight||H,ph=Math.max(200,Math.round(W*bh/bw));if(ph!==H){H=ph;rc.height=H*2;}return;}
-  var w=rc.parentNode.clientWidth||W,vh=window.innerHeight||800;
+function fitStage(){if(!R3)return;var w=rc.parentNode.clientWidth||W,vh=window.innerHeight||800;
   /* 街は縦に長く（通りを見下ろす）、部屋は少し縦長（部屋が横長なので） */
   var hh=w<640?Math.min(w*(where==="town"?1.15:.86),vh*.62):w/1.556,nh=Math.max(240,Math.round(W*hh/w));
   if(nh!==H){H=nh;rc.height=H*2;}}
-if(R3){el("room3d").hidden=false;fitStage();window.addEventListener("resize",function(){syncPlay();});requestAnimationFrame(loop3);}
+if(R3){el("room3d").hidden=false;fitStage();window.addEventListener("resize",fitStage);requestAnimationFrame(loop3);}
 room=emptyRoom();drawPal();drawEditor();left();syncScreen();
 (function(){
   var lib=null;try{lib=window.supabase;}catch(e){}
