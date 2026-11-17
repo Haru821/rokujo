@@ -731,7 +731,8 @@ function init3d(){
   "else if(m==25){alb=lin(vec3(.30,.19,.11))*(.8+.3*fbm(vP.xy*vec2(3.,20.)+vP.z));ks=.06;}",
   "else if(m==26){alb=lin(vec3(.84,.81,.74))*(.85+.2*fbm(vU*20.));}",
   /* 看板（住民名） */
-  "else if(m==27){vec4 t=texture(uPlates,vec2((float(hi)+vU.x)/12.,vU.y));alb=lin(t.rgb);emit=alb*.06*lit;}",
+  /* canvas は上の行が v=0 で読み込まれ、板の u は通りから見て右から左へ増える。上下と左右を返して正しい向きにする */
+  "else if(m==27){vec4 t=texture(uPlates,vec2((float(hi)+1.-vU.x)/12.,1.-vU.y));alb=lin(t.rgb);emit=alb*.06*lit;}",
   /* 提灯：誰かいれば灯る */
   "else if(m==28){float rib=.75+.25*smoothstep(.0,.3,abs(fract(vU.y*6.)-.5));vec3 pc=hs>.5?vec3(1.,.30,.12):vec3(1.,.82,.55);",
   "  emit=pc*.6*rib*lit*(1.-.8*uDay);alb=lin(hs>.5?vec3(.55,.12,.08):vec3(.80,.74,.60))*(.6+.4*rib);}",
