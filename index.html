@@ -939,7 +939,10 @@ function init3d(){
   function fovFor(base,half){var a=W/H;return Math.max(base,2*Math.atan(Math.tan(half)/a));}
   function roomCam(){var a=W/H,tall=a<1.3;/* とても縦長：部屋の幅が収まる距離を形から出し、斜め上から見下ろす */
     if(a<.8){var d=1.95/(Math.tan(.5)*a);setCam([RW/2,.3+d*.85,1.35+d*.53],[RW/2,.3,1.35],1.0);return;}if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
-  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL));setCam([RX/2,3.5,fz+4.7],[RX/2,.15,fz-1.3],Math.min(1.15,fovFor(.8,.52)));return fz;}
+  /* 街：両岸の通りと家の表が横に収まる距離を、画面の形から出す。縦長の携帯ほど高く遠くから見下ろす。自分の岸へ少し寄る */
+  function townCam(){var fz=Math.max(1.2,Math.min(TL-1.0,(me.fy+.5)*CELL)),a=W/H,f=a<1?.95:.8,half=a<1?3.3:2.6;
+    var d=Math.max(5.6,half/(Math.tan(f/2)*a)),cx=RX/2+((me.fx+.5)*CELL-RX/2)*.3,el=a<1?.62:.42;
+    setCam([cx,.2+d*Math.sin(el),fz-1.0+d*Math.cos(el)],[cx,.2,fz-1.0],f);return fz;}
   roomCam();
   function clip(p){var x=p[0],y=p[1],z=p[2];return [VP[0]*x+VP[4]*y+VP[8]*z+VP[12],VP[1]*x+VP[5]*y+VP[9]*z+VP[13],VP[3]*x+VP[7]*y+VP[11]*z+VP[15]];}
   var list=[],blobs=[],collecting=false;
@@ -1935,7 +1938,7 @@ function liveDraw(cy){
 function houseTags(){
   var hs=houses(),PLZ=PL*.45;
   for(var i=0;i<HOUSES;i++){var x=i<6?.55:TCOLS*.45-.55,z=PLZ+(i%6)*3.6+1.8,q=R3.projW([x,2.0,z]);if(!q)continue;
-    var d=q[3];if(d>13)continue;var fade=Math.max(0,Math.min(1,(13-d)/3)),id=hs[i],own=id===uid;
+    var d=Math.abs(z-(me.fy+.5)*.45);if(d>9)continue;var fade=Math.max(0,Math.min(1,(9-d)/2.5)),id=hs[i],own=id===uid;
     var label=id?(own?"自分の家　":"")+nameOf(id):"空き家";
     rx.globalAlpha=fade*(id?1:.55);rx.font=(own?"bold ":"")+'13px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="middle";
     var w=rx.measureText(label).width+14,h=20,cxl=Math.max(w/2+6,Math.min(W-w/2-6,q[0])),x0=Math.round(cxl-w/2),y0=Math.round(q[1]-h/2);q[0]=cxl;
