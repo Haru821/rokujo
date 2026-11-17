@@ -420,12 +420,21 @@ function houses(){var a=[];for(var id in profiles)if(profiles[id])a.push(id);
 function houseRand(hi,b){var v=Math.sin((hi+1)*12.9898+b*78.233)*43758.5453;return v-Math.floor(v);}
 var BENCH=[],SEATPX=11;
 for(var bi=0;bi<HOUSES;bi++)if(houseRand(bi,4)>.5){var bz0=PL*.45+(bi%6)*3.6;
-  BENCH.push(bi<6?{x:1,y:PL+(bi%6)*8+1,X:.52/.45,Z:(bz0+.65)/.45+.1}:{x:TCOLS-2,y:PL+(bi%6)*8+6,X:(TCOLS*.45-.52)/.45,Z:(bz0+3.6-.65)/.45+.1});}
+  var bb0=PL+(bi%6)*8;
+  BENCH.push(bi<6?{x:1,y:bb0+1,X:.52/.45,Z:(bz0+.65)/.45+.1,cells:[[0,bb0],[1,bb0],[0,bb0+1],[1,bb0+1],[0,bb0+2],[1,bb0+2]]}
+    :{x:TCOLS-2,y:bb0+6,X:(TCOLS*.45-.52)/.45,Z:(bz0+3.6-.65)/.45+.1,cells:[[8,bb0+5],[9,bb0+5],[8,bb0+6],[9,bb0+6],[8,bb0+7],[9,bb0+7]]});}
 /* 広場の縁台（横向き、手前を向いて座る）。cx,cz は縁台のまん中（m） */
-[[.75,1.55],[3.75,1.55],[1.0,3.75],[3.5,3.75]].forEach(function(c){BENCH.push({x:Math.floor(c[0]/.45),y:Math.floor(c[1]/.45),X:c[0]/.45,Z:c[1]/.45+.1,plaza:c});});
+[[.75,1.55],[3.75,1.55],[1.0,3.75],[3.5,3.75]].forEach(function(c){var cs=[],x,y;
+  for(x=Math.floor((c[0]-.3)/.45);x<=Math.floor((c[0]+.3)/.45);x++)for(y=Math.floor((c[1]-.1)/.45);y<=Math.floor((c[1]+.1)/.45);y++)cs.push([x,y]);
+  BENCH.push({x:Math.floor(c[0]/.45),y:Math.floor(c[1]/.45),X:c[0]/.45,Z:c[1]/.45+.1,plaza:c,cells:cs});});
+BENCH.forEach(function(b){b.lift=SEATPX;b.name="縁台";});
 /* 広場の中で通れないマス：桜の幹と井戸 */
 function plazaBlock(x,y){return (y===0&&(x===4||x===5))||((y===5||y===6)&&(x===4||x===5));}
-function benchAt(x,y){for(var i=0;i<BENCH.length;i++)if(BENCH[i].x===x&&BENCH[i].y===y)return BENCH[i];return null;}
+function benchAt(x,y){for(var i=0;i<BENCH.length;i++){var c=BENCH[i].cells;for(var j=0;j<c.length;j++)if(c[j][0]===x&&c[j][1]===y)return BENCH[i];}return null;}
+/* 座れる所：街は縁台、部屋はいちばん上が座布団のマス */
+function seatAt(x,y){if(where==="town")return benchAt(x,y);
+  if(x<0||x>=COLS||y<0||y>=ROWS||!room[y*COLS+x])return null;var st=room[y*COLS+x];
+  if(!st.length||st[st.length-1]!=="p-zabuton")return null;return {x:x,y:y,X:x+.5,Z:y+.82,lift:stackTop(y*COLS+x),name:"座布団"};}
 /* 座った姿：上半身を4画素下げ、脚をたたむ */
 var sitCache=Object.create(null);
 function sitOf(key,px){if(sitCache[key])return sitCache[key];var g=new Array(N*N).fill(0);
@@ -522,7 +531,7 @@ function drawSprites(){
         mz=Math.round(zf+(zt-zf)*hk+Math.sin(Math.PI*hk)*10);
       }
       var bob=(me.moving&&!me.hop&&Math.floor(performance.now()/120)%2)?1:0;
-      if(me.sit&&where==="town")stand(lookKey()+"s",sitOf(lookKey()+"s",CHAR),me.sit.X,me.sit.Z,SEATPX);
+      if(me.sit)stand(lookKey()+"s",sitOf(lookKey()+"s",CHAR),me.sit.X,me.sit.Z,me.sit.lift);
       else{shadow(me.fx+0.5,me.fy+0.82);stand(lookKey(),CHAR,me.fx+0.5,me.fy+0.82,mz+bob);}
     }
     if(petKind&&cy===prow){shadow(pfx+0.5,pfy+0.82);stand("__pet"+petKind,PETPX[petKind],pfx+0.5,pfy+0.82,stackTop(Math.round(pfy)*gw()+Math.round(pfx)));}
@@ -1115,16 +1124,18 @@ function placePet(){
 /* 橙のボタン：衣装台や壁の短冊に向いていれば、それを使う。ほかは跳ぶ */
 var ACTS={jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
 function actTarget(){
-  if(where==="town"&&me.sit)return "stand";
-  if(where==="town"){var bf=front(),bb=benchAt(bf[0],bf[1])||benchAt(me.x,me.y);if(bb)return "sit";}
+  if(me.sit)return "stand";
+  var bf=front(),seat=seatAt(bf[0],bf[1])||seatAt(me.x,me.y);
+  if(where==="town"&&seat)return "sit";
   if(where==="town"){var h=doorAhead();if(h<0)return "jump";var o=houses()[h];return !o?"jump":o===uid?"homedoor":"door";}
   /* 部屋の出口は右の壁の奥寄り（奥から2・3マス目） */
   if(me.x===COLS-1&&me.dir[0]===1&&me.dir[1]===0&&(me.y===1||me.y===2))return "out";
-  if(where!=="mine")return "jump";
+  if(where!=="mine")return seat?"sit":"jump";
   var f=front();
   if(inRoom(f)&&room[f[1]*COLS+f[0]].indexOf("p-ishoudai")>=0)return "dress";
   /* 壁の短冊は奥の壁の左寄り（左から1〜4マス目の上） */
   if(me.y===0&&me.dir[0]===0&&me.dir[1]===-1&&me.x>=0&&me.x<=3)return "write";
+  if(seat)return "sit";
   return "jump";
 }
 function syncAct(){
@@ -1133,8 +1144,8 @@ function syncAct(){
   if(a==="dress")setStatus("衣装台の前に立った。橙のボタンで着替えられる。");
   else if(a==="write")setStatus("壁の短冊の前に立った。橙のボタンで書ける。");
   else if(a==="out")setStatus("戸の前に立った。橙のボタンで外に出る。");
-  else if(a==="sit")setStatus("縁台のところ。橙のボタンで座る。");
-  else if(a==="stand")setStatus("縁台に座っている。橙のボタンか矢印で立つ。");
+  else if(a==="sit"){var sf=front(),sa=seatAt(sf[0],sf[1])||seatAt(me.x,me.y);setStatus((sa?sa.name:"縁台")+"のところ。橙のボタンで座る。");}
+  else if(a==="stand")setStatus((me.sit&&me.sit.name||"縁台")+"に座っている。橙のボタンか矢印で立つ。");
   else if(a==="door")setStatus(nameOf(houses()[doorAhead()])+"の家の戸の前。橙のボタンで入る。");
   else if(a==="homedoor")setStatus("自分の家の戸の前。橙のボタンで入る。");
   else if(where==="town"&&me.y>=PL&&((me.y-PL)%8===3||(me.y-PL)%8===4)&&((me.x===0&&me.dir[0]===-1)||(me.x===TCOLS-1&&me.dir[0]===1)))setStatus("空き家。まだ誰も住んでいない。");
@@ -1145,7 +1156,7 @@ function act(){
   if(a==="dress"){show("dress");return;}
   if(a==="write"){show("write");return;}
   if(a==="out"){goOut();return;}
-  if(a==="sit"){var f=front(),b=benchAt(f[0],f[1])||benchAt(me.x,me.y);if(!b)return;me.sit=b;me.x=me.fx=b.x;me.y=me.fy=b.y;me.from=[b.x,b.y];me.dir=[0,1];placePet();liveMe(b.x,b.y);setStatus("縁台に座った。");return;}
+  if(a==="sit"){var f=front(),b=seatAt(f[0],f[1])||seatAt(me.x,me.y);if(!b)return;me.sit=b;me.x=me.fx=b.x;me.y=me.fy=b.y;me.from=[b.x,b.y];me.dir=[0,1];placePet();liveMe(b.x,b.y);setStatus(b.name+"に座った。");return;}
   if(a==="stand"){me.sit=null;liveMe(me.x,me.y);setStatus("立ち上がった。");return;}
   if(a==="door"){var o=houses()[doorAhead()];if(o)visitRes(o,true);return;}
   if(a==="homedoor"){goHome(true);return;}
@@ -1564,7 +1575,7 @@ function liveOwner(){return where==="town"?TOWN_ID:where==="mine"?uid:visitId;}
 function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<gw()&&y>=0&&y<gh();}
 function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
 function liveJoin(){
-  if(where!=="town")me.sit=null;
+  me.sit=null;
   lobbyTrack();
   var owner=liveOwner();
   if(!sb||phase!=="in"||!isUuid(owner)){liveLeave();return;}
@@ -1685,7 +1696,7 @@ function liveMove(p){
   o.x=p.x;o.y=p.y;o.t0=now;
   if(far)petBeside(o);
   if(okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
-  o.sit=p.s===1&&where==="town"?benchAt(p.x,p.y):null;
+  o.sit=p.s===1?seatAt(p.x,p.y):null;
   liveKick();
 }
 function liveJump(p){
@@ -1749,7 +1760,7 @@ function liveDraw(cy){
     var pr0=profiles[id];
     if(!o.px||o.known!==!!pr0){var L=pr0?pr0.look:sanLook(null);o.known=!!pr0;o.px=makeChar(L);o.key="__h"+L.hair+"-"+L.hc+"-"+L.k+"-"+L.o;}
     var bob=(k<1&&Math.floor(now/120)%2)?1:0;
-    if(o.sit&&where==="town"){stand(o.key+"s",sitOf(o.key+"s",o.px),o.sit.X,o.sit.Z,SEATPX);continue;}
+    if(o.sit){stand(o.key+"s",sitOf(o.key+"s",o.px),o.sit.X,o.sit.Z,o.sit.lift);continue;}
     shadow(fx+0.5,fy+0.82);stand(o.key,o.px,fx+0.5,fy+0.82,stackTop(Math.round(fy)*gw()+Math.round(fx))+jz+bob);
   }
   for(id in live.others){o=live.others[id];var pk=livePet(id);if(!pk||!PETPX[pk]||!o.pp)continue;
@@ -1772,10 +1783,10 @@ function liveTags(){
   for(var id in live.others){var o=live.others[id],k=Math.min(1,(now-o.t0)/STEP);
     var fx=o.from[0]+(o.x-o.from[0])*k,fy=o.from[1]+(o.y-o.from[1])*k,jk=(now-o.jt)/380;
     var lift=stackTop(Math.round(fy)*gw()+Math.round(fx))+(jk<1?Math.round(Math.sin(Math.PI*jk)*12):0),tx=fx+0.5,tz=fy+0.82;
-    if(o.sit&&where==="town"){tx=o.sit.X;tz=o.sit.Z;lift=SEATPX-4;}
+    if(o.sit){tx=o.sit.X;tz=o.sit.Z;lift=o.sit.lift-4;}
     nameTag(profiles[id]?profiles[id].name:"…",tx,tz,lift);
     if(o.say&&o.say.until>now)bubble(o.say.t,tx,tz,44+lift);}
-  if(mySay&&mySay.until>now){var mz=stackTop(Math.round(me.fy)*gw()+Math.round(me.fx))+(me.jz||0);if(me.sit&&where==="town")bubble(mySay.t,me.sit.X,me.sit.Z,31+SEATPX-4);else bubble(mySay.t,me.fx+0.5,me.fy+0.82,31+mz);}
+  if(mySay&&mySay.until>now){var mz=stackTop(Math.round(me.fy)*gw()+Math.round(me.fx))+(me.jz||0);if(me.sit)bubble(mySay.t,me.sit.X,me.sit.Z,31+me.sit.lift-4);else bubble(mySay.t,me.fx+0.5,me.fy+0.82,31+mz);}
 }
 
 var replying=false;
@@ -2107,12 +2118,16 @@ Object.keys(tabs).forEach(function(k){tabs[k].addEventListener("click",function(
 });
 el("go-jump").addEventListener("click",act);
 el("dress-back").addEventListener("click",function(){show("room");});
-el("say-go").addEventListener("click",speak);
+el("say-go").addEventListener("click",function(){speak();sayOut();});
+/* パソコン：話し終えたら文字欄から抜け、矢印と WASD で歩けるように戻す */
+function sayOut(){var i=el("say-in");if(document.activeElement===i&&!/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||""))i.blur();}
+el("say-in").addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.target.blur();}});
+rc.addEventListener("pointerdown",function(){var a=document.activeElement;if(a&&a.id==="say-in")a.blur();});
 /* 文字を打つときは、携帯の文字盤に隠れないよう、部屋と「ひとこと」が見える位置まで動かす */
 function sayView(){try{el("view-room").scrollIntoView({block:"start"});}catch(e){}}
 el("say-in").addEventListener("focus",function(){setTimeout(sayView,350);});
 try{if(window.visualViewport)window.visualViewport.addEventListener("resize",function(){if(document.activeElement===el("say-in"))sayView();});}catch(e){}
-el("say-in").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.isComposing){e.preventDefault();speak();}});
+el("say-in").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.isComposing){e.preventDefault();speak();sayOut();}});
 el("write-back").addEventListener("click",function(){show("room");});
 document.addEventListener("keydown",function(e){
   if(INROOM[mode]&&phase==="in"&&e.key==="Escape"){e.preventDefault();show("room");return;}
