@@ -896,11 +896,10 @@ function init3d(){
     function f(u0,y0,u1,y1,w,m,sdd,uv){q4(P([u0,y0,w]),P([u1,y0,w]),P([u1,y1,w]),P([u0,y1,w]),out,uv?[0,0]:[u0,y0],uv?[1,0]:[u1,y0],uv?[1,1]:[u1,y1],uv?[0,1]:[u0,y1],m,sdd);}
     function b(u0,y0,w0,u1,y1,w1,m){var A=P([u0,y0,w0]),B=P([u1,y1,w1]);box(Math.min(A[0],B[0]),Math.min(A[1],B[1]),Math.min(A[2],B[2]),Math.max(A[0],B[0]),Math.max(A[1],B[1]),Math.max(A[2],B[2]),m,null,sd);}
     f(0,0,3.6,top,0,21,sd);
-    /* 戸は、人が立つ2マス（家の4・5マス目、人は少し手前に立つ）の真ん中に合わせる（2026-11-17） */
-    f(.22,.45,1.3,1.55,-.004,22,sd,true);if(shop)f(2.68,.3,3.42,1.6,-.004,22,sd,true);else f(2.72,.55,3.38,1.45,-.004,33,sd,true);
-    f(1.52,0,2.36,1.74,-.006,23,sd,true);
-    f(1.46,1.28,2.42,1.74,-.04,32,sd,true);
-    f(2.46,.75,2.62,1.62,-.03,27,sd,true);b(2.49,0,-.02,2.59,.75,-.0,25);
+    f(.22,.45,1.25,1.55,-.004,22,sd,true);if(shop)f(2.5,.3,3.38,1.6,-.004,22,sd,true);else f(2.55,.55,3.35,1.45,-.004,33,sd,true);
+    f(1.38,0,2.22,1.74,-.006,23,sd,true);
+    f(1.32,1.28,2.28,1.74,-.04,32,sd,true);
+    f(2.3,.75,2.46,1.62,-.03,27,sd,true);b(2.33,0,-.02,2.43,.75,-.0,25);
     b(0,0,-.06,.1,eave,.0,25);b(3.5,0,-.06,3.6,eave,.0,25);
     b(-.05,eave,-.6,3.65,eave+.06,0,25);
     q4(P([-.05,eave+.06,-.68]),P([3.65,eave+.06,-.68]),P([3.65,eave+.3,.02]),P([-.05,eave+.3,.02]),[0,1,0],[0,0],[3.7,0],[3.7,.72],[0,.72],24);
@@ -985,8 +984,7 @@ function init3d(){
     if(a<.8){/* とても縦長：両岸を全部入れると遠すぎるので、自分の岸に寄って近くから。川の側から見て、家の表が見えるように */
       var tf=1.1,th=1.7,te=.42,ts=1.25,ta=1.0,td=th/(Math.tan(tf/2)*a),px=(me.fx+.5)*CELL,
         tx=Math.max(ts,Math.min(RX-ts,px));
-      var sw=Math.max(-1,Math.min(1,(RX/2-px)/1.0));/* 自分の岸の家へ少し顔を向ける */
-      setCam([tx+.45*sw,.2+td*Math.sin(te),fz-ta+td*Math.cos(te)],[tx-.4*sw,.2,fz-ta],tf);return fz;}
+      setCam([tx,.2+td*Math.sin(te),fz-ta+td*Math.cos(te)],[tx,.2,fz-ta],tf);return fz;}
     var d=Math.max(5.6,half/(Math.tan(f/2)*a)),cx=RX/2+((me.fx+.5)*CELL-RX/2)*.3,el=a<1?.62:.42;
     setCam([cx,.2+d*Math.sin(el),fz-1.0+d*Math.cos(el)],[cx,.2,fz-1.0],f);return fz;}
   roomCam();
@@ -1009,9 +1007,6 @@ function init3d(){
     pick:function(px,py){var nx=px/W*2-1,ny=1-py/H*2,t=Math.tan(FOV/2),d=norm([-fz[0]+nx*t*W/H*fx[0]+ny*t*fy[0],-fz[1]+nx*t*W/H*fx[1]+ny*t*fy[1],-fz[2]+nx*t*W/H*fx[2]+ny*t*fy[2]]);
       var GW=gw()*CELL,GD=gh()*CELL;
       if(d[1]<0){var k=-camP[1]/d[1],x=camP[0]+d[0]*k,z=camP[2]+d[2]*k;if(x>=0&&x<GW&&z>=0&&z<GD)return {cell:[Math.floor(x/CELL),Math.floor(z/CELL)]};}
-      /* 街：家の表を押したら、その家 */
-      if(where==="town"&&d[0]!==0){var fx0=d[0]<0?0:GW,k3=(fx0-camP[0])/d[0],hy=camP[1]+d[1]*k3,hz=camP[2]+d[2]*k3,z0=PL*CELL;
-        if(k3>0&&hy>=0&&hy<=3.2&&hz>=z0&&hz<z0+6*3.6)return {house:(d[0]<0?0:6)+Math.floor((hz-z0)/3.6)};}
       if(where!=="town"&&d[2]<0){var k2=-camP[2]/d[2],wx=camP[0]+d[0]*k2,wy=camP[1]+d[1]*k2;if(wx>=SX0&&wx<=SX1&&wy>=SY0&&wy<=SY1)return {wall:true};}
       return null;},
     render:function(now,marker){
@@ -1186,7 +1181,7 @@ function jump(){
   me.jumping=true;me.t0=performance.now();liveSend("jp",{id:uid});requestAnimationFrame(jumpTick);
 }
 function jumpTick(now){
-  var k=Math.max(0,(now-me.t0)/380);
+  var k=(now-me.t0)/380;
   if(k>=1){me.jumping=false;me.jz=0;drawRoom();if(hold.dir)holdGo();return;}
   me.jz=Math.round(Math.sin(Math.PI*k)*12);drawRoom();requestAnimationFrame(jumpTick);
 }
@@ -1200,19 +1195,11 @@ function walkTo(tx,ty){
   me.dir=[p[0][0]-me.x,p[0][1]-me.y];liveMe(p[0][0],p[0][1]);
   petFollow([me.x,me.y]);me.path=p;me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();requestAnimationFrame(tick);
 }
-/* 街で家を押したら、その家の戸の前まで歩き、戸の方を向く。戸の前で押したら入る */
-function goDoor(i){
-  if(where!=="town"||me.moving||me.jumping)return;
-  var x=i<6?0:TCOLS-1,y3=PL+(i%6)*8+3,face=[i<6?-1:1,0],y=Math.abs(me.y-y3)<=Math.abs(me.y-(y3+1))?y3:y3+1;
-  if(me.x===x&&(me.y===y3||me.y===y3+1)){if(me.sit){me.sit=null;liveMe(me.x,me.y);}me.dir=face;drawRoom();act();return;}
-  me.faceAfter=face;walkTo(x,y);if(!me.moving){me.faceAfter=null;if(me.x===x&&me.y===y){me.dir=face;drawRoom();}}
-}
 function tick(now){
-  /* 絵を描く合図の時刻は、歩き始めより前のことがある（重い端末）。そのときは0から */
-  var seg=me.path[0],k=Math.max(0,(now-me.t0)/(me.hop?STEP*1.6:STEP));
+  var seg=me.path[0],k=(now-me.t0)/(me.hop?STEP*1.6:STEP);
   me.dir=[seg[0]-me.from[0],seg[1]-me.from[1]];
   if(k>=1){me.x=me.fx=seg[0];me.y=me.fy=seg[1];me.path.shift();me.from=[me.x,me.y];me.t0=now;me.k=0;
-    if(!me.path.length){me.moving=false;me.hop=false;if(me.faceAfter){me.dir=me.faceAfter;me.faceAfter=null;}drawRoom();if(hold.dir)holdGo();return;}
+    if(!me.path.length){me.moving=false;me.hop=false;drawRoom();if(hold.dir)holdGo();return;}
     me.dir=[me.path[0][0]-me.x,me.path[0][1]-me.y];liveMe(me.path[0][0],me.path[0][1]);
     petFollow([me.x,me.y]);
   }else{me.k=k;me.fx=me.from[0]+(seg[0]-me.from[0])*k;me.fy=me.from[1]+(seg[1]-me.from[1])*k;}
@@ -1267,7 +1254,7 @@ rc.addEventListener("click",function(e){
   var r=rc.getBoundingClientRect();
   var px=(e.clientX-r.left)/r.width*W,py=(e.clientY-r.top)/r.height*H;
   var cx=-1,cy=-1,onWall=false;
-  if(R3){var hit=R3.pick(px,py);if(hit&&hit.house!=null){goDoor(hit.house);return;}if(hit&&hit.cell){cx=hit.cell[0];cy=hit.cell[1];}onWall=!!(hit&&hit.wall);}
+  if(R3){var hit=R3.pick(px,py);if(hit&&hit.cell){cx=hit.cell[0];cy=hit.cell[1];}onWall=!!(hit&&hit.wall);}
   else{var s=(py-VP)/(YF-VP);
     if(s>0){cy=Math.floor(ROWS*(1-(1/s-1)/KP));cx=Math.floor(COLS/2+(px-CX0-cam*T*(1-s))/(T*s));}
     var k1=pr(0.5,0,202),k2=pr(3.4,0,48);onWall=px>=k1[0]&&px<=k2[0]&&py>=k1[1]&&py<=k2[1];}
@@ -2003,7 +1990,7 @@ function liveDraw(cy){
 /* 街：それぞれの家の戸の上に、住民名の札。自分の家は橙で「自分の家」。空き家は薄く */
 function houseTags(){
   var hs=houses(),PLZ=PL*.45;
-  for(var i=0;i<HOUSES;i++){var x=i<6?.55:TCOLS*.45-.55,z=PLZ+(i%6)*3.6+1.94,q=R3.projW([x,2.0,z]);if(!q)continue;
+  for(var i=0;i<HOUSES;i++){var x=i<6?.55:TCOLS*.45-.55,z=PLZ+(i%6)*3.6+1.8,q=R3.projW([x,2.0,z]);if(!q)continue;
     var d=Math.abs(z-(me.fy+.5)*.45);if(d>9)continue;var fade=Math.max(0,Math.min(1,(9-d)/2.5)),id=hs[i],own=id===uid;
     var label=id?(own?"自分の家　":"")+nameOf(id):"空き家";
     rx.globalAlpha=fade*(id?1:.55);rx.font=(own?"bold ":"")+'13px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="middle";
