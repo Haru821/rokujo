@@ -145,6 +145,7 @@ body.play.bagopen .controls{bottom:calc(52% + 12px);z-index:6}
 body.play.strips .hud-strips:not([hidden]){bottom:calc(52% + 12px);z-index:6}
 body.play.bagopen .hud-say,body.play.strips .hud-say{display:none}
 body.play.strips #reply-panel:not([hidden]){display:flex}
+.badge{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:9px;background:var(--lamp);color:var(--night);font-size:11px;line-height:18px;text-align:center;vertical-align:1px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -947,6 +948,7 @@ function init3d(){
     get collecting(){return collecting;},
     /* 2Dの pr() の代わり：マスの位置（X、Z）を画面の点にし、切り絵1画素が画面で何画素かを s で返す */
     proj:function(X,Z){var c=clip([X*CELL,0,Z*CELL]),w=c[2]||1e-6;return [(c[0]/w*.5+.5)*W,(1-(c[1]/w*.5+.5))*H,32/T*S3*(H/2)*PROJ[5]/w];},
+    projW:function(p){var c=clip(p),w=c[2];if(w<=.1)return null;var sx=(c[0]/w*.5+.5)*W,sy=(1-(c[1]/w*.5+.5))*H;if(sx<-60||sx>W+60||sy<-30||sy>H+30)return null;return [sx,sy,0,Math.hypot(p[0]-camP[0],p[1]-camP[1],p[2]-camP[2])];},
     begin:function(){list=[];blobs=[];collecting=true;},
     stand:function(key,px,X,Z,lift){list.push({k:key,px:px,x:X*CELL,z:Z*CELL-Math.min(Math.max(lift,0),8)*.012,y:lift*S3});},
     blob:function(X,Z){blobs.push([X*CELL,Z*CELL]);},
@@ -1084,6 +1086,7 @@ function loop3(now){
   R3.begin();drawSprites();
   var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<gw()&&fy0>=0&&fy0<gh())?[fx0,fy0]:null;
   R3.render(now,mk);
+  if(where==="town")houseTags();
   liveTags();
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
   if(!me.moving&&!me.jumping)syncAct();
@@ -1601,7 +1604,7 @@ function refresh(){
       if(!profiles[uid]){checkEntry();return;}
       if(where==="res"&&!profiles[visitId]){goHome();note("訪ねていた部屋は、なくなった。");}
     }
-    drawAll();
+    drawAll();checkNotif();
     if(again){again=false;refresh();}
   });
 }
@@ -1871,6 +1874,14 @@ function speak(){
   sayLast=now;inp.value="";
   mySay={t:t,until:now+SAYMS};liveSend("say",{id:uid,t:t});drawRoom();sayAgain();
 }
+/* 手紙のマークの吹き出し（自分にだけ見える） */
+function mailMark(X,Z,up,nv){
+  var b=pr(X,Z,0),s0=T*b[2]/32,cx=b[0],by=b[1]-up*s0,w=30,h=22,x0=Math.round(cx-w/2),y0=Math.round(by-h-8),bob=reduce?0:Math.round(Math.sin(performance.now()/300)*2);y0+=bob;
+  rx.fillStyle="#f4efe4";rx.fillRect(x0,y0,w,h);rx.beginPath();rx.moveTo(cx-4,y0+h);rx.lineTo(cx+4,y0+h);rx.lineTo(cx,y0+h+5);rx.closePath();rx.fill();
+  rx.strokeStyle="#1b1622";rx.lineWidth=1;rx.strokeRect(x0+.5,y0+.5,w-1,h-1);
+  rx.strokeStyle="#c2452d";rx.lineWidth=1.5;rx.strokeRect(x0+6.5,y0+5.5,w-13,h-11);rx.beginPath();rx.moveTo(x0+6.5,y0+5.5);rx.lineTo(cx,y0+h/2+1);rx.lineTo(x0+w-6.5,y0+5.5);rx.stroke();
+  if(nv>1){rx.fillStyle="#f0a23c";rx.beginPath();rx.arc(x0+w-1,y0+1,7,0,6.2832);rx.fill();rx.fillStyle="#15182b";rx.font='bold 9px monospace';rx.textAlign="center";rx.textBaseline="middle";rx.fillText(String(Math.min(9,nv)),x0+w-1,y0+1.5);}
+}
 function bubble(t,X,Z,up){
   var b=pr(X,Z,0),s0=T*b[2]/32,base=b[1]-up*s0;
   rx.font='16px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="top";
@@ -1920,6 +1931,18 @@ function liveDraw(cy){
     shadow(px2+0.5,py2+0.82);stand("__pet"+pk,PETPX[pk],px2+0.5,py2+0.82,stackTop(Math.round(py2)*gw()+Math.round(px2)));
   }
 }
+/* 街：それぞれの家の戸の上に、住民名の札。自分の家は橙で「自分の家」。空き家は薄く */
+function houseTags(){
+  var hs=houses(),PLZ=PL*.45;
+  for(var i=0;i<HOUSES;i++){var x=i<6?.55:TCOLS*.45-.55,z=PLZ+(i%6)*3.6+1.8,q=R3.projW([x,2.0,z]);if(!q)continue;
+    var d=q[3];if(d>13)continue;var fade=Math.max(0,Math.min(1,(13-d)/3)),id=hs[i],own=id===uid;
+    var label=id?(own?"自分の家　":"")+nameOf(id):"空き家";
+    rx.globalAlpha=fade*(id?1:.55);rx.font=(own?"bold ":"")+'13px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="middle";
+    var w=rx.measureText(label).width+14,h=20,cxl=Math.max(w/2+6,Math.min(W-w/2-6,q[0])),x0=Math.round(cxl-w/2),y0=Math.round(q[1]-h/2);q[0]=cxl;
+    rx.fillStyle=own?"#f0a23c":id?"rgba(27,22,34,.82)":"rgba(27,22,34,.55)";rx.fillRect(x0,y0,w,h);
+    rx.strokeStyle=own?"#f4efe4":"rgba(244,239,228,.6)";rx.lineWidth=1;rx.strokeRect(x0+.5,y0+.5,w-1,h-1);
+    rx.fillStyle=own?"#15182b":"#f4efe4";rx.fillText(label,q[0],q[1]+1);rx.globalAlpha=1;}
+}
 function nameTag(nm,X,Z,lift){
   var b=pr(X,Z,0),s0=T*b[2]/32,y=b[1]-(29+(lift||0))*s0;
   rx.font='11px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="bottom";
@@ -1936,6 +1959,8 @@ function liveTags(){
     if(o.sit){tx=o.sit.X;tz=o.sit.Z;lift=o.sit.lift-4;}
     nameTag(profiles[id]?profiles[id].name:"…",tx,tz,lift);
     if(o.say&&o.say.until>now)bubble(o.say.t,tx,tz,44+lift);}
+  if(notif.l>0&&!(mySay&&mySay.until>now)){var mz2=stackTop(Math.round(me.fy)*gw()+Math.round(me.fx))+(me.jz||0);
+    if(me.sit)mailMark(me.sit.X,me.sit.Z,33+me.sit.lift-4,notif.l);else mailMark(me.fx+0.5,me.fy+0.82,33+mz2,notif.l);}
   if(mySay&&mySay.until>now){var mz=stackTop(Math.round(me.fy)*gw()+Math.round(me.fx))+(me.jz||0);if(me.sit)bubble(mySay.t,me.sit.X,me.sit.Z,31+me.sit.lift-4);else bubble(mySay.t,me.fx+0.5,me.fy+0.82,31+mz);}
 }
 
@@ -2019,7 +2044,7 @@ function loadLetters(){
   if(phase!=="in")return;
   run(sb.from("letters").select("id,sender,recipient,body,created_at").order("created_at",{ascending:false}).limit(200)).then(function(r){
     if(r.error){el("let-status").textContent="文箱を読めなかった。"+errText(r.error);return;}
-    letters=sanLetters(r.data);drawLetters();
+    letters=sanLetters(r.data);drawLetters();if(mode==="letter")markSeen("l");
   });
 }
 function drawLetters(){
@@ -2250,7 +2275,8 @@ function show(v){
   if(mode==="make")drawBase();else if(mode==="room"){hint();actNow="";syncAct();}else if(mode==="people")drawPeople();
   else if(mode==="dress")drawDresser();
   else if(mode==="write"){var wt=wallText();el("write-now").textContent=wt;el("write-now-box").hidden=!wt;left();postIn.focus();}
-  else if(mode==="letter"){if(!el("let-status").textContent)el("let-status").textContent="宛先を選んで書く。封をして、相手の文箱へ届く。";loadLetters();}
+  else if(mode==="post")markSeen("r");
+  if(mode==="letter"){if(!el("let-status").textContent)el("let-status").textContent="宛先を選んで書く。封をして、相手の文箱へ届く。";loadLetters();}
   else if(mode==="admin"){drawAdmin();loadAdmin();}
 }
 Object.keys(tabs).forEach(function(k){tabs[k].addEventListener("click",function(){show(k);refresh();});});
@@ -2289,6 +2315,32 @@ document.addEventListener("keydown",function(e){
   if(m){e.preventDefault();step(m[0],m[1]);}
   else if((e.key===" "||e.key==="Enter")&&t!=="BUTTON"&&t!=="A"){e.preventDefault();act();}
 });
+/* ---- 通知：新しい手紙と、自分の短冊への新しい返事の件数（2026-11-17、はる）
+   見た所はこの端末に残す。45秒ごとに、件数だけを Supabase に聞く ---- */
+var notif={l:0,r:0};
+function seenGet(){try{var o=JSON.parse(localStorage.getItem("rokujo-seen-"+uid)||"{}");return o&&typeof o==="object"?o:{};}catch(e){return {};}}
+function seenSet(k,v){if(!v)return;var o=seenGet();if(typeof o[k]==="number"&&o[k]>=v)return;o[k]=v;try{localStorage.setItem("rokujo-seen-"+uid,JSON.stringify(o));}catch(e){}}
+function isoOf(t){return new Date(typeof t==="number"&&t>0?t:0).toISOString();}
+function checkNotif(){
+  if(phase!=="in"||!sb||!isUuid(uid))return;
+  var sg=seenGet(),mine=strips.filter(function(p){return p.owner===uid;}).map(function(p){return p.id;}).slice(0,100);
+  Promise.all([
+    run(sb.from("letters").select("id",{count:"exact",head:true}).eq("recipient",uid).gt("created_at",isoOf(sg.l))),
+    mine.length?run(sb.from("replies").select("id",{count:"exact",head:true}).in("strip_id",mine).neq("author",uid).gt("created_at",isoOf(sg.r))):Promise.resolve({count:0})
+  ]).then(function(r){if(phase!=="in")return;
+    var n=function(x){return x&&!x.error&&typeof x.count==="number"&&x.count>0?Math.min(99,x.count):0;};
+    notif.l=mode==="letter"?0:n(r[0]);notif.r=mode==="post"?0:n(r[1]);drawBadges();});
+}
+function badge(id,base,nv){var b=el(id);b.textContent=base;if(nv>0){var sp=mk("span","badge",String(nv));sp.setAttribute("aria-label","新しいもの"+nv+"件");b.appendChild(sp);}}
+function drawBadges(){badge("tab-letter","手紙",notif.l);badge("tab-post","短冊",notif.r);
+  var t=notif.l+notif.r,m=el("hud-menu");m.textContent="≡";if(t>0){var sp=mk("span","badge",String(Math.min(99,t)));m.appendChild(sp);}}
+/* 手紙の画面を開いたら手紙を、短冊の画面を開いたら返事を、見たことにする */
+function markSeen(which){
+  if(which==="l"){var ml=0;letters.forEach(function(x){if(x.to===uid&&x.t>ml)ml=x.t;});seenSet("l",ml||Date.now());notif.l=0;}
+  if(which==="r"){var my=Object.create(null);strips.forEach(function(p){if(p.owner===uid)my[p.id]=1;});var mr=0;replies.forEach(function(x){if(my[x.strip]&&x.author!==uid&&x.t>mr)mr=x.t;});seenSet("r",mr||Date.now());notif.r=0;}
+  drawBadges();
+}
+setInterval(function(){if(!document.hidden)checkNotif();},45000);
 function drawAll(){
   syncScreen();if(phase!=="in")return;
   count();left();drawTL();drawMyReplies();drawPeople();drawLetTo();
