@@ -448,7 +448,7 @@ function drawRoom(){
   rx.fillStyle="#15182b";rx.fillRect(0,0,W,H);
   var A=pr(0,ROWS),B=pr(COLS,ROWS),C=pr(COLS,0),D=pr(0,0),At=pr(0,ROWS,WH),Bt=pr(COLS,ROWS,WH),Ct=pr(COLS,0,WH),Dt=pr(0,0,WH);
   quad([A,D,Dt,At],"#b3a582");quad([B,C,Ct,Bt],"#c0b28f");quad([D,C,Ct,Dt],"#cdbf9f");
-  quad([pr(COLS,3,0),pr(COLS,5,0),pr(COLS,5,150),pr(COLS,3,150)],"#5a3a22");quad([pr(COLS,3.12,0),pr(COLS,4.88,0),pr(COLS,4.88,142),pr(COLS,3.12,142)],"#e9dcc0");
+  quad([pr(COLS,1,0),pr(COLS,3,0),pr(COLS,3,150),pr(COLS,1,150)],"#5a3a22");quad([pr(COLS,1.12,0),pr(COLS,2.88,0),pr(COLS,2.88,142),pr(COLS,1.12,142)],"#e9dcc0");
   bw(0.5,3.4,48,202,"#f4efe4");bw(0.42,3.48,202,208,"#5a3a22");bw(0.42,3.48,42,48,"#5a3a22");bw(0.6,0.8,56,72,"#c2452d");
   var txt=wallText().replace(/\s+/g,""),tr=pr(3.4,0,202),bl=pr(0.5,0,48),FS=14,PX=17,PY=16;
   var rowsN=Math.max(1,Math.floor((bl[1]-tr[1]-10)/PY)),colsN=Math.max(1,Math.floor((tr[0]-bl[0]-14)/PX));
@@ -552,7 +552,7 @@ function init3d(){
   "else if(m==8){alb=lin(vec3(.13,.08,.05));ks=.08;sh=30.;}",
   "else if(m==10){vec2 q=vU;float fr=1.-smoothstep(.04,.06,min(min(q.x,1.-q.x),min(q.y,1.-q.y)));vec2 g=min(fract(q*vec2(2.,6.)),1.-fract(q*vec2(2.,6.)));",
   "  float k=1.-smoothstep(.02,.04,min(g.x*.5,g.y/6.)*4.);float wood=max(max(fr,k),step(q.y,.18));",
-  "  alb=wood>.5?lin(vec3(.24,.15,.09)):lin(vec3(.86,.82,.70));if(wood<.5)emit=vec3(.03,.04,.08);}",
+  "  alb=wood>.5?lin(vec3(.24,.15,.09)):lin(vec3(.86,.82,.70));if(wood<.5)emit=vec3(.10,.12,.20);}",
   "else{alb=lin(vec3(.06,.05,.05));}",
   "vec3 L;vec3 lc=lampAt(vP,L);vec3 V=normalize(uCam-vP);float a=ao(vP,N);",
   "vec3 c=alb*lc*max(dot(N,L),0.)+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*max(dot(N,L),0.);",
@@ -639,9 +639,9 @@ function init3d(){
   var SX0=.24,SX1=1.52,SY0=.52,SY1=1.74;
   quad([SX0,SY0,.006],[SX1,SY0,.006],[SX1,SY1,.006],[SX0,SY1,.006],[0,0,1],[0,1],[1,1],[1,0],[0,0],6);
   box(SX0-.04,SY1-.03,.004,SX1+.04,SY1+.02,.03,8,"ZYy");box(SX0-.04,SY0-.02,.004,SX1+.04,SY0+.03,.03,8,"ZYy");
-  /* 部屋の出口：右の壁の手前寄り（手前から2・3マス目）の引き戸 */
-  quad([RW-.004,0,5*CELL],[RW-.004,0,3*CELL],[RW-.004,1.8,3*CELL],[RW-.004,1.8,5*CELL],[-1,0,0],[0,0],[1,0],[1,1],[0,1],10);
-  box(RW-.05,1.8,3*CELL-.04,RW,1.86,5*CELL+.04,8,"xy");box(RW-.05,0,3*CELL-.06,RW,1.8,3*CELL,8,"xZ");box(RW-.05,0,5*CELL,RW,1.8,5*CELL+.06,8,"xz");
+  /* 部屋の出口：右の壁の奥寄り（奥から2・3マス目）の引き戸。障子に外の月明かりが透ける */
+  quad([RW-.004,0,3*CELL],[RW-.004,0,1*CELL],[RW-.004,1.8,1*CELL],[RW-.004,1.8,3*CELL],[-1,0,0],[0,0],[1,0],[1,1],[0,1],10);
+  box(RW-.05,1.8,1*CELL-.04,RW,1.86,3*CELL+.04,8,"xy");box(RW-.05,0,1*CELL-.06,RW,1.8,1*CELL,8,"xZ");box(RW-.05,0,3*CELL,RW,1.8,3*CELL+.06,8,"xz");
   var roomN=V.length/10;
   var vaoR=gl.createVertexArray();gl.bindVertexArray(vaoR);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
   [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
@@ -742,7 +742,7 @@ function init3d(){
       function base(P,lamp,lc){gl.uniformMatrix4fv(P.u.uVP,false,VP);gl.uniform3fv(P.u.uLamp,lamp);gl.uniform3fv(P.u.uLampCol,lc);gl.uniform3fv(P.u.uCam,camP);
         gl.uniform1f(P.u.uTime,reduce?0:now/1000);gl.uniform2f(P.u.uRes,cv.width,cv.height);}
       gl.viewport(0,0,cv.width,cv.height);gl.clearColor(.02,.024,.045,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-      gl.enable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE);
+      gl.enable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE); /* 壁は内側から見るので、裏表で消さない */
       var SZ=34*S3,lampOf,glowOne=null,shadowA,town=where==="town";
       if(town){
         var cx=townCam(),hs=houses(),key=hs.map(function(id){return id+":"+nameOf(id);}).join("|");if(key!==plKey){plKey=key;drawPlates(hs);}
@@ -917,7 +917,7 @@ rc.addEventListener("click",function(e){
 var inv=document.getElementById("inv"),statusEl=document.getElementById("status"),discard=document.getElementById("discard"),baseEl=document.getElementById("base"),bagEl=document.getElementById("bag"),bagBtn=document.getElementById("bag-btn");
 function setStatus(t){statusEl.textContent=t;}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
-function hint(){if(where==="town"){setStatus("川沿いの町。歩いて人と会える。家の戸の前で上を向き、橙のボタンで入る。");return;}setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。右の壁の手前の戸から外に出られる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。右の壁の手前の戸から外に出られる。");}
+function hint(){if(where==="town"){setStatus("川沿いの町。歩いて人と会える。家の戸の前で上を向き、橙のボタンで入る。");return;}setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。右の壁の奥の戸から外に出られる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。右の壁の奥の戸から外に出られる。");}
 function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
 function inRoom(p){return p[0]>=0&&p[0]<gw()&&p[1]>=0&&p[1]<gh();}
 function itemButton(it,fn){
@@ -974,8 +974,8 @@ function placePet(){
 var ACTS={jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る"},actNow="jump";
 function actTarget(){
   if(where==="town"){var h=doorAhead();if(h<0)return "jump";var o=houses()[h];return !o?"jump":o===uid?"homedoor":"door";}
-  /* 部屋の出口は右の壁の手前寄り（手前から2・3マス目） */
-  if(me.x===COLS-1&&me.dir[0]===1&&me.dir[1]===0&&(me.y===3||me.y===4))return "out";
+  /* 部屋の出口は右の壁の奥寄り（奥から2・3マス目） */
+  if(me.x===COLS-1&&me.dir[0]===1&&me.dir[1]===0&&(me.y===1||me.y===2))return "out";
   if(where!=="mine")return "jump";
   var f=front();
   if(inRoom(f)&&room[f[1]*COLS+f[0]].indexOf("p-ishoudai")>=0)return "dress";
@@ -1361,8 +1361,8 @@ el("post-go").addEventListener("click",function(){
 });
 
 /* ---- 訪ねる ---- */
-/* 戸から入ったときは、部屋の出口（右の壁の手前寄り）の内側に立つ */
-function atDoor(){me.x=me.fx=COLS-1;me.y=me.fy=4;me.dir=[-1,0];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placeMe();placePet();}
+/* 戸から入ったときは、部屋の出口（右の壁の奥寄り）の内側に立つ */
+function atDoor(){me.x=me.fx=COLS-1;me.y=me.fy=2;me.dir=[-1,0];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placeMe();placePet();}
 function resetMe(){me.x=me.fx=3;me.y=me.fy=5;me.dir=[0,-1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;placeMe();placePet();}
 function visitRes(id,door){
   if(phase!=="in"||me.moving||me.jumping)return;
