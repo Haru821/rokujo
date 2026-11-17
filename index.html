@@ -408,8 +408,9 @@ function paint(ctx,px,ox,oy){
 /* 街（川沿いの町）：1本の通りに12軒。1軒は横8マス、通りは縦4マス（2026-11-17、はる） */
 /* 街（川沿いの町）：川の両岸に通りが1本ずつ、家は片側6軒ずつで12軒。橋が2本（2026-11-17、はる）
    マスは横10（左の通り0〜2、川3〜6、右の通り7〜9）、縦48（1軒が8マス）。上（奥）へ行くほど番号が小さい */
-var HOUSES=12,TCOLS=10,TROWS=48,TOWN_ID="7a0d0000-0000-4000-8000-000000000001",LOBBY_ID="7a0d0000-0000-4000-8000-000000000002",ONLINE_ID="7a0d0000-0000-4000-8000-000000000003";
-var BRIDGES=[15,31];
+/* 広場は通りのいちばん奥（川上）に縦10マス。家の行はそのあとから（2026-11-17、はる） */
+var PL=10,HOUSES=12,TCOLS=10,TROWS=PL+48,TOWN_ID="7a0d0000-0000-4000-8000-000000000001",LOBBY_ID="7a0d0000-0000-4000-8000-000000000002",ONLINE_ID="7a0d0000-0000-4000-8000-000000000003";
+var BRIDGES=[PL+15,PL+31];
 function gw(){return where==="town"?TCOLS:COLS;}
 function gh(){return where==="town"?TROWS:ROWS;}
 /* 家は、入った順に1軒ずつ（住民の表の入った日時の順）。0〜5は左の岸、6〜11は右の岸 */
@@ -418,8 +419,12 @@ function houses(){var a=[];for(var id in profiles)if(profiles[id])a.push(id);
 /* 縁台：家ごとに置くかが決まる（街の形と同じ乱数）。座る場所のマスと、切り絵を立てる位置 */
 function houseRand(hi,b){var v=Math.sin((hi+1)*12.9898+b*78.233)*43758.5453;return v-Math.floor(v);}
 var BENCH=[],SEATPX=11;
-for(var bi=0;bi<HOUSES;bi++)if(houseRand(bi,4)>.5){var bz0=(bi%6)*3.6;
-  BENCH.push(bi<6?{x:1,y:(bi%6)*8+1,X:.52/.45,Z:(bz0+.65)/.45+.1}:{x:TCOLS-2,y:(bi%6)*8+6,X:(TCOLS*.45-.52)/.45,Z:(bz0+3.6-.65)/.45+.1});}
+for(var bi=0;bi<HOUSES;bi++)if(houseRand(bi,4)>.5){var bz0=PL*.45+(bi%6)*3.6;
+  BENCH.push(bi<6?{x:1,y:PL+(bi%6)*8+1,X:.52/.45,Z:(bz0+.65)/.45+.1}:{x:TCOLS-2,y:PL+(bi%6)*8+6,X:(TCOLS*.45-.52)/.45,Z:(bz0+3.6-.65)/.45+.1});}
+/* 広場の縁台（横向き、手前を向いて座る）。cx,cz は縁台のまん中（m） */
+[[.75,1.55],[3.75,1.55],[1.0,3.75],[3.5,3.75]].forEach(function(c){BENCH.push({x:Math.floor(c[0]/.45),y:Math.floor(c[1]/.45),X:c[0]/.45,Z:c[1]/.45+.1,plaza:c});});
+/* 広場の中で通れないマス：桜の幹と井戸 */
+function plazaBlock(x,y){return (y===0&&(x===4||x===5))||((y===5||y===6)&&(x===4||x===5));}
 function benchAt(x,y){for(var i=0;i<BENCH.length;i++)if(BENCH[i].x===x&&BENCH[i].y===y)return BENCH[i];return null;}
 /* 座った姿：上半身を4画素下げ、脚をたたむ */
 var sitCache=Object.create(null);
@@ -430,11 +435,11 @@ function onBridge(x,y){return x>=3&&x<=6&&BRIDGES.some(function(b){return y===b|
 var CELLM=0.45,SPX=CELLM/32*1.35;
 function archM(xm){var t=(xm-1.15)/2.2;return t<=0||t>=1?0:.3*Math.sin(Math.PI*t);}
 /* 家の戸の方を向いていれば、その家の番号。左の家の戸は x=0 の左、右の家の戸は x=9 の右。戸は1軒の中の4・5マス目 */
-function doorAhead(){if(where!=="town")return -1;var r=me.y%8;if(r!==3&&r!==4)return -1;
-  if(me.x===0&&me.dir[0]===-1&&me.dir[1]===0)return Math.floor(me.y/8);
-  if(me.x===TCOLS-1&&me.dir[0]===1&&me.dir[1]===0)return 6+Math.floor(me.y/8);return -1;}
+function doorAhead(){if(where!=="town"||me.y<PL)return -1;var r=(me.y-PL)%8;if(r!==3&&r!==4)return -1;
+  if(me.x===0&&me.dir[0]===-1&&me.dir[1]===0)return Math.floor((me.y-PL)/8);
+  if(me.x===TCOLS-1&&me.dir[0]===1&&me.dir[1]===0)return 6+Math.floor((me.y-PL)/8);return -1;}
 function stackTop(k){if(where==="town"){var x=k%TCOLS,y=Math.floor(k/TCOLS);return onBridge(x,y)?Math.round(archM((x+.5)*CELLM)/SPX):0;}var z=0;room[k].forEach(function(id){var it=find(id);if(it)z+=it.top||0;});return z;}
-function walkable(cx,cy){if(where==="town")return cx>=0&&cx<TCOLS&&cy>=0&&cy<TROWS&&((cx<3||cx>6)||onBridge(cx,cy));return cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&!(host&&host.x===cx&&host.y===cy)&&stackTop(cy*COLS+cx)<=4;}
+function walkable(cx,cy){if(where==="town")return cx>=0&&cx<TCOLS&&cy>=0&&cy<TROWS&&(cy<PL?!plazaBlock(cx,cy):((cx<3||cx>6)||onBridge(cx,cy)));return cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&!(host&&host.x===cx&&host.y===cy)&&stackTop(cy*COLS+cx)<=4;}
 
 /* ---- 部屋を描く ---- */
 var rc=document.getElementById("room"),rx=rc.getContext("2d");
@@ -693,20 +698,39 @@ function init3d(){
   var vaoR=gl.createVertexArray();gl.bindVertexArray(vaoR);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
   [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
   /* 街の形。川（x 1.35〜3.15）が奥へ流れ、両岸に通り、その外に家。1軒は奥行き方向に 3.6m */
-  var TL=TROWS*CELL,RX=TCOLS*CELL,R0=3*CELL,R1=7*CELL;V=[];
+  var TL=TROWS*CELL,RX=TCOLS*CELL,R0=3*CELL,R1=7*CELL,PLZ=PL*CELL;V=[];
   /* 面の向きを、見る側（hint）に向ける四角 */
   function q4(a,b,c,d,hint,ua,ub,uc,ud,m,seed){var n=norm(cross(sub(b,a),sub(d,a)));if(dot(n,hint)<0)n=[-n[0],-n[1],-n[2]];quad(a,b,c,d,n,ua,ub,uc,ud,m,seed);}
-  q4([0,0,-2],[R0,0,-2],[R0,0,TL+4],[0,0,TL+4],[0,1,0],[0,0],[0,0],[0,0],[0,0],20);
-  q4([R1,0,-2],[RX,0,-2],[RX,0,TL+4],[R1,0,TL+4],[0,1,0],[0,0],[0,0],[0,0],[0,0],20);
-  box(R0-.1,0,-2,R0,.06,TL+4,29,"YX");box(R1,0,-2,R1+.1,.06,TL+4,29,"Yx");
-  q4([R0,-.55,-2],[R0,0,-2],[R0,0,TL+4],[R0,-.55,TL+4],[1,0,0],[0,0],[0,0],[0,0],[0,0],29);
-  q4([R1,-.55,-2],[R1,0,-2],[R1,0,TL+4],[R1,-.55,TL+4],[-1,0,0],[0,0],[0,0],[0,0],[0,0],29);
-  q4([R0,-.5,-8],[R1,-.5,-8],[R1,-.5,TL+6],[R0,-.5,TL+6],[0,1,0],[0,0],[0,0],[0,0],[0,0],30);
+  q4([0,0,PLZ],[R0,0,PLZ],[R0,0,TL+4],[0,0,TL+4],[0,1,0],[0,0],[0,0],[0,0],[0,0],20);
+  q4([R1,0,PLZ],[RX,0,PLZ],[RX,0,TL+4],[R1,0,TL+4],[0,1,0],[0,0],[0,0],[0,0],[0,0],20);
+  box(R0-.1,0,PLZ,R0,.06,TL+4,29,"YX");box(R1,0,PLZ,R1+.1,.06,TL+4,29,"Yx");
+  q4([R0,-.55,PLZ],[R0,0,PLZ],[R0,0,TL+4],[R0,-.55,TL+4],[1,0,0],[0,0],[0,0],[0,0],[0,0],29);
+  q4([R1,-.55,PLZ],[R1,0,PLZ],[R1,0,TL+4],[R1,-.55,TL+4],[-1,0,0],[0,0],[0,0],[0,0],[0,0],29);
+  q4([R0,-.5,PLZ],[R1,-.5,PLZ],[R1,-.5,TL+6],[R0,-.5,TL+6],[0,1,0],[0,0],[0,0],[0,0],[0,0],30);
+  /* 広場：石畳。川は広場の下をくぐって流れ出る */
+  q4([0,0,0],[RX,0,0],[RX,0,PLZ],[0,0,PLZ],[0,1,0],[0,0],[0,0],[0,0],[0,0],20);
+  q4([R0,-.55,PLZ+.002],[R1,-.55,PLZ+.002],[R1,0,PLZ+.002],[R0,0,PLZ+.002],[0,0,1],[0,0],[0,0],[0,0],[0,0],29);
+  box(R0+.25,-.5,PLZ-.01,R1-.25,-.16,PLZ+.004,9,"Z");
+  box(R0,-.02,PLZ-.06,R1,.04,PLZ+.08,29,"YZ");
+  /* 板塀で囲む（奥と左右） */
+  q4([-.05,0,-.04],[RX+.05,0,-.04],[RX+.05,1.15,-.04],[-.05,1.15,-.04],[0,0,1],[0,0],[RX,0],[RX,1.15],[0,1.15],21,99);
+  box(-.06,1.15,-.1,RX+.06,1.21,.04,24);
+  q4([-.04,0,0],[-.04,0,PLZ],[-.04,1.15,PLZ],[-.04,1.15,0],[1,0,0],[0,0],[PLZ,0],[PLZ,1.15],[0,1.15],21,99);
+  q4([RX+.04,0,0],[RX+.04,0,PLZ],[RX+.04,1.15,PLZ],[RX+.04,1.15,0],[-1,0,0],[0,0],[PLZ,0],[PLZ,1.15],[0,1.15],21,99);
+  box(-.1,1.15,0,.02,1.21,PLZ,24);box(RX-.02,1.15,0,RX+.1,1.21,PLZ,24);
+  /* 井戸：石の井筒と小さな屋根 */
+  var WX=2.25,WZ=2.7;box(WX-.3,0,WZ-.3,WX+.3,.42,WZ+.3,29);box(WX-.24,.3,WZ-.24,WX+.24,.43,WZ+.24,30);
+  box(WX-.32,0,WZ-.02,WX-.27,1.05,WZ+.03,25);box(WX+.27,0,WZ-.02,WX+.32,1.05,WZ+.03,25);box(WX-.3,.95,WZ-.02,WX+.3,.99,WZ+.03,25);
+  q4([WX-.42,1.0,WZ-.35],[WX+.42,1.0,WZ-.35],[WX+.42,1.22,WZ],[WX-.42,1.22,WZ],[0,1,0],[0,0],[.84,0],[.84,.4],[0,.4],24);
+  q4([WX-.42,1.0,WZ+.35],[WX+.42,1.0,WZ+.35],[WX+.42,1.22,WZ],[WX-.42,1.22,WZ],[0,1,0],[0,0],[.84,0],[.84,.4],[0,.4],24);
+  /* 広場の縁台（横向き） */
+  BENCH.forEach(function(b){if(!b.plaza)return;var cx=b.plaza[0],cz=b.plaza[1];
+    box(cx-.3,.17,cz-.1,cx+.3,.21,cz+.1,25);[[-.27,-.07],[.23,-.07],[-.27,.03],[.23,.03]].forEach(function(l){box(cx+l[0],0,cz+l[1],cx+l[0]+.04,.17,cz+l[1]+.04,25);});});
   q4([-40,-12,-14],[RX+40,-12,-14],[RX+40,20,-14],[-40,20,-14],[0,0,1],[0,0],[0,0],[0,0],[0,0],31);
   /* 川の岩と苔（決まった乱数で並べる） */
   var rs=7;function rnd(){rs=(rs*16807)%2147483647;return rs/2147483647;}
-  for(var ri=0;ri<70;ri++){var side=rnd()<.5,rz=rnd()*TL,rw=.12+rnd()*.25,rx0=side?R0+rnd()*.25:R1-.25-rnd()*.25,rh=.05+rnd()*.32;box(rx0,-.55,rz,rx0+rw,-.5+rh,rz+rw*(.7+rnd()*.8),rnd()<.3?35:29);}
-  for(ri=0;ri<40;ri++){var sd2=rnd()<.5,mz=rnd()*TL,mx=sd2?R0-.32+rnd()*.15:R1+.17+rnd()*.15;box(mx,0,mz,mx+.15+rnd()*.15,.05+rnd()*.12,mz+.15+rnd()*.25,35);}
+  for(var ri=0;ri<70;ri++){var side=rnd()<.5,rz=PLZ+.2+rnd()*(TL-PLZ-.2),rw=.12+rnd()*.25,rx0=side?R0+rnd()*.25:R1-.25-rnd()*.25,rh=.05+rnd()*.32;box(rx0,-.55,rz,rx0+rw,-.5+rh,rz+rw*(.7+rnd()*.8),rnd()<.3?35:29);}
+  for(ri=0;ri<40;ri++){var sd2=rnd()<.5,mz=PLZ+rnd()*(TL-PLZ),mx=sd2?R0-.32+rnd()*.15:R1+.17+rnd()*.15;box(mx,0,mz,mx+.15+rnd()*.15,.05+rnd()*.12,mz+.15+rnd()*.25,35);}
   /* 橋：反った板と欄干 */
   BRIDGES.forEach(function(br){var z0=br*CELL+.02,z1=(br+2)*CELL-.02,NS=10,bx0=1.15,bx1=3.35;
     for(var k=0;k<NS;k++){var xa=bx0+(bx1-bx0)*k/NS,xb=bx0+(bx1-bx0)*(k+1)/NS,ya=archM(xa),yb=archM(xb);
@@ -715,10 +739,14 @@ function init3d(){
       [z0,z1-.04].forEach(function(zr){box(xa,ya,zr,xa+.04,ya+.32,zr+.04,25);q4([xa,ya+.30,zr],[xb,yb+.30,zr],[xb,yb+.34,zr+.04],[xa,ya+.34,zr+.04],[0,1,0],[0,0],[0,0],[0,0],[0,0],25);});}
     box(bx0-.05,-.55,z0+.1,bx0+.15,0,z0+.3,29);box(bx0-.05,-.55,z1-.3,bx0+.15,0,z1-.1,29);box(bx1-.15,-.55,z0+.1,bx1+.05,0,z0+.3,29);box(bx1-.15,-.55,z1-.3,bx1+.05,0,z1-.1,29);});
   /* 街灯（いつも灯る） */
-  var LAMPS=[];for(var li=0;li<=6;li++){[[R0-.14,li*3.6+.3],[R1+.1,li*3.6+.3]].forEach(function(lp){box(lp[0],0,lp[1],lp[0]+.04,1.05,lp[1]+.04,25);box(lp[0]-.06,1.05,lp[1]-.06,lp[0]+.1,1.22,lp[1]+.1,34);box(lp[0]-.07,1.22,lp[1]-.07,lp[0]+.11,1.25,lp[1]+.11,25);LAMPS.push([lp[0]+.02,1.14,lp[1]+.02,0]);});}
+  var LAMPS=[];
+  [[.3,.35],[RX-.3,.35],[.3,PLZ-.35],[RX-.3,PLZ-.35]].forEach(function(t){var x=t[0],z=t[1];
+    box(x-.1,0,z-.1,x+.1,.08,z+.1,29);box(x-.04,.08,z-.04,x+.04,.42,z+.04,29);box(x-.09,.42,z-.09,x+.09,.6,z+.09,34);box(x-.14,.6,z-.14,x+.14,.66,z+.14,29);box(x-.03,.66,z-.03,x+.03,.74,z+.03,29);
+    LAMPS.push([x,.51,z,0]);});
+  for(var li=0;li<=6;li++){[[R0-.14,PLZ+li*3.6+.3],[R1+.1,PLZ+li*3.6+.3]].forEach(function(lp){box(lp[0],0,lp[1],lp[0]+.04,1.05,lp[1]+.04,25);box(lp[0]-.06,1.05,lp[1]-.06,lp[0]+.1,1.22,lp[1]+.1,34);box(lp[0]-.07,1.22,lp[1]-.07,lp[0]+.11,1.25,lp[1]+.11,25);LAMPS.push([lp[0]+.02,1.14,lp[1]+.02,0]);});}
   /* 家：u は通りにそった向き（0〜3.6）、w は通りから奥（0が家の表、負は通りの側）。左の岸は x=-w、右の岸は x=RX+w */
   var HLANT=[];
-  function house(hi){var left=hi<6,z0=(hi%6)*3.6,sd=100+hi,h=function(a,b){var v=Math.sin((hi+1)*12.9898+b*78.233)*43758.5453;return v-Math.floor(v);};
+  function house(hi){var left=hi<6,z0=PLZ+(hi%6)*3.6,sd=100+hi,h=function(a,b){var v=Math.sin((hi+1)*12.9898+b*78.233)*43758.5453;return v-Math.floor(v);};
     var two=h(0,1)>.35,top=two?3.25:2.05,eave=1.9,roofD=1.6+h(0,2)*.5,roofH=.75+h(0,3)*.45,bench=h(0,4)>.5,shop=h(0,5)>.55;
     function P(t){return left?[-t[2],t[1],z0+t[0]]:[RX+t[2],t[1],z0+3.6-t[0]];}
     var out=left?[1,0,0]:[-1,0,0];
@@ -786,7 +814,14 @@ function init3d(){
     for(var i=0;i<11;i++){R(5+i*2,7,1,9+((i*7)%10),i%2?10:11);R(6+i*2,8,1,7+((i*5)%8),i%3?11:10);}});
   var DECOR=[];
   BRIDGES.forEach(function(br){DECOR.push({k:"__yanagi",px:YANAGI,x:R0-.3,z:br*CELL-.25,y:0,sc:1.8},{k:"__yanagi",px:YANAGI,x:R1+.3,z:(br+2)*CELL+.35,y:0,sc:1.8});});
-  for(var di=0;di<16;di++){var zz=.8+di*1.33;DECOR.push({k:di%3?"__bush":"__flower",px:di%3?BUSH:FLOWER,x:di%2?R0-.16:R1+.16,z:zz,y:0,sc:di%3?1.1:.9});}
+  /* 広場のまん中奥に大きな桜（切り絵） */
+  var SAKURA=art(function(R,P){R(14,18,4,13,4);R(15,14,2,5,5);R(11,22,3,2,4);R(18,20,3,2,4);
+    R(5,4,22,12,14);R(3,7,26,8,14);R(8,1,16,5,14);R(6,15,20,4,14);
+    [[7,5],[12,3],[18,4],[23,7],[5,10],[10,9],[16,8],[21,11],[26,10],[9,14],[14,12],[19,15],[24,14],[12,17],[17,17]].forEach(function(d){R(d[0],d[1],2,2,2);});
+    [[9,7],[15,6],[20,9],[6,12],[13,15],[22,16],[27,8]].forEach(function(d){P(d[0],d[1],16);});});
+  DECOR.push({k:"__sakura",px:SAKURA,x:RX/2,z:.42,y:0,sc:4.6});
+  [[1.0,.5],[3.5,.5],[1.6,4.2],[2.9,4.2]].forEach(function(f){DECOR.push({k:"__flower",px:FLOWER,x:f[0],z:f[1],y:0,sc:.9});});
+  for(var di=0;di<16;di++){var zz=PLZ+.8+di*1.33;DECOR.push({k:di%3?"__bush":"__flower",px:di%3?BUSH:FLOWER,x:di%2?R0-.16:R1+.16,z:zz,y:0,sc:di%3?1.1:.9});}
   var FOV=.68,PROJ,tgt,camP,fz,fx,fy,VP;
   function persp(f,a,n,fa){var t=1/Math.tan(f/2);return [t/a,0,0,0,0,t,0,0,0,0,(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0];}
   function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
@@ -881,12 +916,14 @@ function timeOfDay(){
   return o;
 }
 /* 立体のときは、決まった間隔で描き直す（行灯のゆらぎ）。部屋を見ていないときは描かない */
-var todT=0;
+var todT=0,lastPlaza=false;
 function loop3(now){
   requestAnimationFrame(loop3);
   if(!R3||phase!=="in"||mode!=="room"||document.hidden)return;
   rx.setTransform(2,0,0,2,0,0);rx.clearRect(0,0,W,H);
   if(now-todT>3000){todT=now;drawTea();}
+  /* 広場に入ったら、ひとこと案内する */
+  var inPlaza=where==="town"&&me.y<PL;if(inPlaza!==lastPlaza){lastPlaza=inPlaza;if(inPlaza&&!me.sit)setStatus("広場。人が集まれる。縁台に座れる。");}
   R3.begin();drawSprites();
   var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<gw()&&fy0>=0&&fy0<gh())?[fx0,fy0]:null;
   R3.render(now,mk);
@@ -915,8 +952,8 @@ function step(dx,dy){
   if(me.sit){me.sit=null;liveMe(me.x,me.y);setStatus("立ち上がった。");drawRoom();return;}
   var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];if(turned)liveMe(me.x,me.y);
   var tx=me.x+dx,ty=me.y+dy;
-  if(tx<0||tx>=gw()||ty<0||ty>=gh()){drawRoom();if(where==="town"){if(doorAhead()<0)setStatus(tx<0||tx>=TCOLS?"家の壁。戸の前で横を向くと入れる。":"通りの端。");}else if(actTarget()==="jump")setStatus("そっちは壁。");return;}
-  if(where==="town"&&!walkable(tx,ty)){drawRoom();setStatus("川がある。橋を渡る。");return;}
+  if(tx<0||tx>=gw()||ty<0||ty>=gh()){drawRoom();if(where==="town"){if(doorAhead()<0)setStatus(ty<0||(ty<PL&&(tx<0||tx>=TCOLS))?"広場の塀。":tx<0||tx>=TCOLS?"家の壁。戸の前で横を向くと入れる。":"通りの端。");}else if(actTarget()==="jump")setStatus("そっちは壁。");return;}
+  if(where==="town"&&!walkable(tx,ty)){drawRoom();setStatus(ty<PL?(ty===0?"桜の木。":"井戸。"):"川がある。橋を渡る。");return;}
   var tst=where==="town"?[]:room[ty*COLS+tx];
   if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus(actTarget()==="dress"?"衣装台の前に立った。橙のボタンで着替えられる。拾うこともできる。":"「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
   var G=gw(),d=stackTop(ty*G+tx)-stackTop(me.y*G+me.x);
@@ -941,7 +978,7 @@ function walkTo(tx,ty){
   if(me.moving||me.jumping)return;
   if(me.sit){me.sit=null;liveMe(me.x,me.y);}me.hop=false;
   if(tx===me.x&&ty===me.y){setStatus("もうそこに立っている。");return;}
-  if(!walkable(tx,ty)){if(where==="town"){setStatus("川がある。橋を渡る。");return;}setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
+  if(!walkable(tx,ty)){if(where==="town"){setStatus(ty<PL?"そこには立てない。":"川がある。橋を渡る。");return;}setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
   var p=route(tx,ty);if(!p){setStatus("家具にふさがれて、そこまで歩けない。");return;}
   if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveMe(tx,ty);return;}
   me.dir=[p[0][0]-me.x,p[0][1]-me.y];liveMe(p[0][0],p[0][1]);
@@ -1079,7 +1116,7 @@ function placePet(){
 var ACTS={jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
 function actTarget(){
   if(where==="town"&&me.sit)return "stand";
-  if(where==="town"){var bf=front(),bb=benchAt(bf[0],bf[1]);if(bb)return "sit";}
+  if(where==="town"){var bf=front(),bb=benchAt(bf[0],bf[1])||benchAt(me.x,me.y);if(bb)return "sit";}
   if(where==="town"){var h=doorAhead();if(h<0)return "jump";var o=houses()[h];return !o?"jump":o===uid?"homedoor":"door";}
   /* 部屋の出口は右の壁の奥寄り（奥から2・3マス目） */
   if(me.x===COLS-1&&me.dir[0]===1&&me.dir[1]===0&&(me.y===1||me.y===2))return "out";
@@ -1096,11 +1133,11 @@ function syncAct(){
   if(a==="dress")setStatus("衣装台の前に立った。橙のボタンで着替えられる。");
   else if(a==="write")setStatus("壁の短冊の前に立った。橙のボタンで書ける。");
   else if(a==="out")setStatus("戸の前に立った。橙のボタンで外に出る。");
-  else if(a==="sit")setStatus("縁台の前。橙のボタンで座る。");
+  else if(a==="sit")setStatus("縁台のところ。橙のボタンで座る。");
   else if(a==="stand")setStatus("縁台に座っている。橙のボタンか矢印で立つ。");
   else if(a==="door")setStatus(nameOf(houses()[doorAhead()])+"の家の戸の前。橙のボタンで入る。");
   else if(a==="homedoor")setStatus("自分の家の戸の前。橙のボタンで入る。");
-  else if(where==="town"&&(me.y%8===3||me.y%8===4)&&((me.x===0&&me.dir[0]===-1)||(me.x===TCOLS-1&&me.dir[0]===1)))setStatus("空き家。まだ誰も住んでいない。");
+  else if(where==="town"&&me.y>=PL&&((me.y-PL)%8===3||(me.y-PL)%8===4)&&((me.x===0&&me.dir[0]===-1)||(me.x===TCOLS-1&&me.dir[0]===1)))setStatus("空き家。まだ誰も住んでいない。");
 }
 function act(){
   if(me.moving||me.jumping)return;
@@ -1108,7 +1145,7 @@ function act(){
   if(a==="dress"){show("dress");return;}
   if(a==="write"){show("write");return;}
   if(a==="out"){goOut();return;}
-  if(a==="sit"){var f=front(),b=benchAt(f[0],f[1]);if(!b)return;me.sit=b;me.x=me.fx=b.x;me.y=me.fy=b.y;me.from=[b.x,b.y];me.dir=[0,1];placePet();liveMe(b.x,b.y);setStatus("縁台に座った。");return;}
+  if(a==="sit"){var f=front(),b=benchAt(f[0],f[1])||benchAt(me.x,me.y);if(!b)return;me.sit=b;me.x=me.fx=b.x;me.y=me.fy=b.y;me.from=[b.x,b.y];me.dir=[0,1];placePet();liveMe(b.x,b.y);setStatus("縁台に座った。");return;}
   if(a==="stand"){me.sit=null;liveMe(me.x,me.y);setStatus("立ち上がった。");return;}
   if(a==="door"){var o=houses()[doorAhead()];if(o)visitRes(o,true);return;}
   if(a==="homedoor"){goHome(true);return;}
@@ -1511,7 +1548,7 @@ function goOut(){
   if(where==="mine")home=room;
   where="town";visitId=null;visitNm="";visitCustom=[];host=null;room=[];
   bagOpen=false;bagEl.hidden=true;bagBtn.setAttribute("aria-pressed","false");el("reply-panel").hidden=true;
-  if(i>=0){me.x=me.fx=i<6?0:TCOLS-1;me.y=me.fy=(i%6)*8+4;me.dir=i<6?[1,0]:[-1,0];}else{me.x=me.fx=1;me.y=me.fy=TROWS-2;me.dir=[0,-1];}me.path=[];me.moving=false;me.jumping=false;me.jz=0;placePet();
+  if(i>=0){me.x=me.fx=i<6?0:TCOLS-1;me.y=me.fy=PL+(i%6)*8+4;me.dir=i<6?[1,0]:[-1,0];}else{me.x=me.fx=1;me.y=me.fy=TROWS-2;me.dir=[0,-1];}me.path=[];me.moving=false;me.jumping=false;me.jz=0;placePet();
   liveJoin();
   el("visit-bar").hidden=false;el("visit-name").textContent="川沿いの町にいる";
   show("room");setStatus(i>=0?"外に出た。後ろが"+(owner===uid?"自分":nameOf(owner))+"の家。":"外に出た。");
