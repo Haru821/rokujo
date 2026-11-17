@@ -146,6 +146,11 @@ body.play.strips .hud-strips:not([hidden]){bottom:calc(52% + 12px);z-index:6}
 body.play.bagopen .hud-say,body.play.strips .hud-say{display:none}
 body.play.strips #reply-panel:not([hidden]){display:flex}
 .badge{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:9px;background:var(--lamp);color:var(--night);font-size:11px;line-height:18px;text-align:center;vertical-align:1px}
+.zukan{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin:8px 0}
+.zk{background:rgba(244,239,228,.06);border:1px solid var(--line);padding:6px 4px;text-align:center}
+.zk canvas{width:64px;height:64px;image-rendering:pixelated;display:block;margin:0 auto}
+.zk .zn{font-size:13px}.zk .zm{font-size:11px;color:var(--mute);min-height:14px}
+.zk.no .zn{color:var(--mute)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -305,6 +310,7 @@ body.play.strips #reply-panel:not([hidden]){display:flex}
   <section id="view-people" hidden>
     <h2>住民</h2>
     <div class="block" id="people"></div>
+    <div class="block" id="zukan-box"></div>
   </section>
 
   <section id="view-make" hidden>
@@ -417,6 +423,43 @@ var PRESETS=[
   {id:"p-yunomi",name:"湯のみ",top:8,px:art(function(R,P){R(13,24,6,6,11);R(13,22,6,2,10);R(14,22,4,1,11);P(15,19,2);P(16,17,2);P(15,15,2);})},
   {id:"p-ishoudai",name:"衣装台",top:17,px:art(function(R,P){R(10,1,12,13,4);R(11,2,10,11,12);R(12,3,3,1,2);R(12,4,1,2,2);R(17,8,3,1,2);R(6,13,20,3,6);R(6,16,20,14,5);R(6,22,20,1,4);R(6,29,20,1,4);R(15,18,2,2,9);R(15,25,2,2,9);})}
 ];
+/* ---- 釣り：魚の種類（2026-11-17、はる）。番号は住民の記録に残るので並びを変えない。足すときは後ろに ----
+   s は大きさ（cm）、w は釣れやすさ（時間 t：0 夜・1 朝・2 昼・3 夕方、天気 wn）、r はめずらしい */
+function fishArt(o){return art(function(R,P){
+  if(o.kind==="zari"){R(10,18,12,5,7);R(21,19,4,3,7);R(25,18,2,5,7);R(6,15,5,3,7);R(6,22,5,3,7);R(5,14,2,2,7);R(5,24,2,2,7);P(11,17,1);P(11,19,1);R(12,23,1,3,7);R(15,23,1,3,7);R(18,23,1,3,7);return;}
+  if(o.kind==="boot"){R(12,8,9,15,13);R(8,19,13,6,13);R(8,25,14,2,1);R(12,8,9,2,3);R(13,12,1,6,12);return;}
+  var L=o.L,H=o.H,cx=16,cy=18,x0=cx-Math.floor(L/2),x1=x0+L-1;
+  for(var x=x0;x<=x1;x++){var u=(x-cx)/(L/2),hh=Math.max(1,Math.round(H/2*Math.sqrt(Math.max(0,1-u*u))));R(x,cy-hh,1,hh*2,o.c);R(x,cy+Math.max(0,Math.round(hh/3)),1,hh-Math.round(hh/3),o.b);}
+  for(var t=0;t<(o.tail||4);t++)R(x1+1+t,cy-1-t,1,2+2*t,o.f);
+  R(cx-2,cy-Math.round(H/2)-1,Math.max(2,Math.round(L/5)),1,o.f);
+  (o.sp||[]).forEach(function(q){P(cx+q[0],cy+q[1],q[2]);});
+  P(x0+2,cy-1,1);if(o.wh){R(x0-2,cy+1,3,1,1);R(x0-2,cy+2,1,2,1);}});}
+var FISH=[
+  {n:"メダカ",s:[2,4],w:function(){return 10;},a:{L:10,H:4,c:16,b:2,f:6,tail:3}},
+  {n:"フナ",s:[10,30],w:function(){return 10;},a:{L:18,H:9,c:3,b:16,f:3}},
+  {n:"コイ",s:[30,70],w:function(t){return t===0?3:6;},a:{L:24,H:10,c:4,b:6,f:5,wh:1}},
+  {n:"ニシキゴイ",s:[30,60],r:1,w:function(){return 1;},a:{L:24,H:10,c:2,b:2,f:2,sp:[[-6,-3,7],[-5,-3,7],[-5,-2,7],[0,-4,7],[1,-4,7],[1,-3,7],[2,-3,7],[5,-2,7],[6,-2,7],[-2,0,7],[-1,0,7]]}},
+  {n:"アユ",s:[12,25],w:function(t){return t===1?6:t===2?2:0;},a:{L:20,H:6,c:3,b:2,f:9,sp:[[-5,-1,9],[-4,-1,9]]}},
+  {n:"ヤマメ",s:[15,30],w:function(t){return t===1||t===3?4:t===2?1:0;},a:{L:20,H:7,c:6,b:16,f:6,sp:[[-4,-1,15],[-1,-1,15],[2,-1,15],[5,-1,15],[-4,0,15],[-1,0,15],[2,0,15],[5,0,15]]}},
+  {n:"ナマズ",s:[30,60],w:function(t,wn){return t===0?6:wn==="雨"?4:.5;},a:{L:26,H:8,c:13,b:3,f:13,wh:1,tail:3}},
+  {n:"ドジョウ",s:[8,15],w:function(t,wn){return wn==="雨"?6:1;},a:{L:20,H:3,c:5,b:6,f:5,tail:2,wh:1}},
+  {n:"ウナギ",s:[40,80],r:1,w:function(t,wn){return t===0?(wn==="雨"?2.5:1.5):0;},a:{L:28,H:3,c:11,b:9,f:11,tail:2}},
+  {n:"ザリガニ",s:[6,12],w:function(){return 5;},a:{kind:"zari"}},
+  {n:"金魚",s:[5,12],r:1,w:function(){return .8;},a:{L:14,H:8,c:7,b:9,f:7,tail:6}},
+  {n:"オイカワ",s:[10,15],w:function(t){return t===2?5:2;},a:{L:16,H:6,c:12,b:2,f:7,sp:[[-3,-1,14],[0,-1,14],[3,-1,14]]}},
+  {n:"タナゴ",s:[5,9],w:function(){return 4;},a:{L:12,H:6,c:15,b:14,f:7}},
+  {n:"ライギョ",s:[40,70],r:1,w:function(t){return t===0||t===3?2:.3;},a:{L:26,H:7,c:4,b:6,f:4,sp:[[-6,-2,1],[-2,-2,1],[2,-2,1],[6,-2,1],[-4,1,1],[0,1,1],[4,1,1]]}},
+  {n:"サクラマス",s:[40,60],r:1,w:function(t,wn){return wn==="桜"?3:0;},a:{L:24,H:9,c:14,b:2,f:3}},
+  {n:"イワナ",s:[20,35],r:1,w:function(t,wn){return wn==="雪"?4:0;},a:{L:20,H:7,c:3,b:8,f:3,sp:[[-5,-2,2],[-1,-3,2],[3,-2,2],[6,-3,2]]}},
+  {n:"古い長靴",s:null,w:function(){return 1.5;},a:{kind:"boot"}}
+];
+FISH.forEach(function(f){f.px=fishArt(f.a);});
+/* 金魚鉢：釣ったことのある魚だけ、荷物に出る */
+FISH.forEach(function(f,k){var a=f.a;
+  PRESETS.push({id:"p-bowl"+k,name:k===16?"古い長靴":"金魚鉢（"+f.n+"）",top:k===16?18:14,fish:k,px:k===16?f.px:art(function(R,P){
+    R(9,14,14,1,2);R(8,15,16,1,16);R(8,16,16,10,12);R(9,26,14,1,12);R(10,27,12,1,12);R(7,17,1,8,16);R(24,17,1,8,16);R(12,28,8,2,3);P(10,17,2);P(10,18,2);
+    if(a.kind==="zari"){R(13,22,6,2,7);R(11,21,2,1,7);R(11,24,2,1,7);}else{var c=a.c===12?2:a.c;R(12,20,7,3,c);R(19,19,2,5,a.f===12?2:a.f);P(13,20,1);R(12,22,7,1,a.b===12?2:a.b);}
+    R(14,25,2,1,10);R(18,24,1,2,11);})});});
 /* 見た目：髪型・髪の色・着物・帯を組み合わせて人の絵を作る */
 var HAIRS=["短髪","長髪","お団子"],HCS=[1,4,3,7],KS=[13,12,11,10,7,15,14,2],OS=[7,9,8,2,1,10];
 var look={hair:0,hc:1,k:13,o:7};
@@ -464,7 +507,7 @@ var reduce=false;try{reduce=window.matchMedia("(prefers-reduced-motion: reduce)"
 
 function emptyRoom(){var a=[];for(var i=0;i<COLS*ROWS;i++)a.push([]);return a;}
 function myRoomRef(){return where==="mine"?room:(home||room);}
-function myItems(){return PRESETS.concat(custom);}
+function myItems(){return PRESETS.filter(function(it){return it.fish==null||fishRec[it.fish];}).concat(custom);}
 function items(){return PRESETS.concat(where==="res"?visitCustom:custom);}
 function find(id){var a=items();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
 function paint(ctx,px,ox,oy){
@@ -1147,6 +1190,7 @@ function loop3(now){
   var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<gw()&&fy0>=0&&fy0<gh())?[fx0,fy0]:null;
   R3.render(now,mk);
   if(where==="town")houseTags();
+  fishDraw(now);
   liveTags();
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
   if(!me.moving&&!me.jumping)syncAct();
@@ -1336,11 +1380,13 @@ function placePet(){
   pet.from=[pet.x,pet.y];pet.t0=0;
 }
 /* 橙のボタン：衣装台や壁の短冊に向いていれば、それを使う。ほかは跳ぶ */
-var ACTS={jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
+var ACTS={fish:"釣る",reel:"上げる",jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
 function actTarget(){
   if(me.sit)return "stand";
   var bf=front(),seat=seatAt(bf[0],bf[1])||seatAt(me.x,me.y);
   if(where==="town"&&seat)return "sit";
+  if(where==="town"&&fishing)return "reel";
+  if(where==="town"&&fishSpot())return "fish";
   if(where==="town"){var h=doorAhead();if(h<0)return "jump";var o=houses()[h];return !o?"jump":o===uid?"homedoor":"door";}
   /* 部屋の出口は右の壁の奥寄り（奥から2・3マス目） */
   if(me.x===COLS-1&&me.dir[0]===1&&me.dir[1]===0&&(me.y===1||me.y===2))return "out";
@@ -1352,6 +1398,45 @@ function actTarget(){
   if(seat)return "sit";
   return "jump";
 }
+/* ---- 釣り：川の前で糸を垂らす。浮きが沈んだら上げる（2026-11-17、はる） ---- */
+var fishRec={},fishing=null;
+function fishSpot(){if(where!=="town"||me.sit||me.y<PL||me.dir[1]!==0)return false;
+  if(!((me.x===2&&me.dir[0]===1)||(me.x===TCOLS-3&&me.dir[0]===-1)))return false;
+  return !onBridge(me.x,me.y)&&!onBridge(me.x+me.dir[0],me.y);}
+function fishEnd(){if(!fishing)return;clearTimeout(fishing.tm);fishing=null;actNow="";syncAct();}
+function fishStart(){
+  fishing={st:"wait",t0:performance.now(),tm:setTimeout(fishBite,2500+Math.random()*6000)};
+  setStatus("糸を垂らした。浮きが沈んだら、橙のボタンで上げる。");actNow="";syncAct();
+}
+function fishBite(){if(!fishing)return;fishing.st="bite";fishing.t1=performance.now();
+  setStatus("引いている！ いま上げる。");try{if(navigator.vibrate)navigator.vibrate(80);}catch(e){}
+  fishing.tm=setTimeout(function(){if(fishing&&fishing.st==="bite"){fishEnd();setStatus("逃げられた。もう一度、橙のボタンで糸を垂らす。");}},1400);}
+function fishTod(){var h=jstHour();return h<5||h>=19?0:h<9?1:h<16?2:3;}
+function fishPick(){var t=fishTod(),wn=weatherNow().name,ws=FISH.map(function(f){return Math.max(0,f.w(t,wn));}),sum=ws.reduce(function(a,b){return a+b;},0),x=Math.random()*sum;
+  for(var k=0;k<ws.length;k++){x-=ws[k];if(x<0)return k;}return 0;}
+function fishReel(){
+  if(!fishing)return;
+  if(fishing.st==="wait"){fishEnd();setStatus("早すぎた。魚が逃げた。");return;}
+  fishEnd();
+  var k=fishPick(),f=FISH[k],cm=f.s?Math.round(f.s[0]+(f.s[1]-f.s[0])*Math.pow(Math.random(),1.6)):0,old=fishRec[k],first=!old;
+  fishRec[k]=[(old?old[0]:0)+1,Math.max(old?old[1]:0,cm)];save();
+  var t=f.s?f.n+" "+cm+"cm":f.n;var now=performance.now();
+  mySay={t:t,until:now+SAYMS,fish:k};liveSend("say",{id:uid,t:t});
+  setStatus((f.s?"「"+f.n+"」を釣った。"+cm+"cm。":"「古い長靴」を釣り上げた……。")+(first?"はじめて。図鑑に入り、荷物から部屋に飾れる。":old&&cm>old[1]?"いちばん大きい。":""));
+  drawRoom();
+}
+setInterval(function(){if(fishing&&(me.moving||me.jumping||where!=="town"||phase!=="in"))fishEnd();},300);
+/* 糸と浮き（立体のときだけ） */
+function fishDraw(now){
+  if(!fishing||!R3||!R3.projW)return;var d=me.dir[0],z=(me.fy+.82)*.45;
+  var hand=R3.projW([(me.fx+.5+d*.2)*.45,.42,z]),tip=R3.projW([(me.fx+.5+d*1.3)*.45,1.05,z]),bob=R3.projW([(me.x+.5+d*2.2)*.45,-.47,z]);
+  if(!hand||!tip)return;
+  rx.strokeStyle="#c79a5a";rx.lineWidth=2.5;rx.beginPath();rx.moveTo(hand[0],hand[1]);rx.lineTo(tip[0],tip[1]);rx.stroke();
+  if(!bob)return;var bite=fishing.st==="bite",dy=bite?3+Math.sin(now/60)*1.5:Math.sin(now/450)*1.2,bx=bob[0],by=bob[1]+dy;
+  rx.strokeStyle="rgba(244,239,228,.75)";rx.lineWidth=1;rx.beginPath();rx.moveTo(tip[0],tip[1]);rx.quadraticCurveTo((tip[0]+bx)/2,Math.max(tip[1],by)+10,bx,by-3);rx.stroke();
+  if(bite){var rr=((now-fishing.t1)/6)%14;rx.strokeStyle="rgba(244,239,228,"+(0.6-rr/24)+")";rx.beginPath();rx.ellipse(bob[0],bob[1]+2,6+rr,(6+rr)*.4,0,0,6.2832);rx.stroke();}
+  rx.fillStyle="#e2553a";rx.beginPath();rx.arc(bx,by-2,4,Math.PI,0);rx.fill();rx.fillStyle="#f4efe4";rx.beginPath();rx.arc(bx,by-2,4,0,Math.PI);rx.fill();
+}
 function syncAct(){
   var a=actTarget();if(a===actNow)return;
   actNow=a;el("go-jump").textContent=ACTS[a];
@@ -1362,11 +1447,14 @@ function syncAct(){
   else if(a==="stand")setStatus((me.sit&&me.sit.name||"縁台")+"に座っている。橙のボタンか矢印で立つ。");
   else if(a==="door")setStatus(nameOf(houses()[doorAhead()])+"の家の戸の前。橙のボタンで入る。");
   else if(a==="homedoor")setStatus("自分の家の戸の前。橙のボタンで入る。");
+  else if(a==="fish")setStatus("川の前。橙のボタンで糸を垂らす。");
   else if(where==="town"&&me.y>=PL&&((me.y-PL)%8===3||(me.y-PL)%8===4)&&((me.x===0&&me.dir[0]===-1)||(me.x===TCOLS-1&&me.dir[0]===1)))setStatus("空き家。まだ誰も住んでいない。");
 }
 function act(){
   if(me.moving||me.jumping)return;
   var a=actTarget();
+  if(a==="fish"){fishStart();return;}
+  if(a==="reel"){fishReel();return;}
   if(a==="dress"){show("dress");return;}
   if(a==="write"){show("write");return;}
   if(a==="out"){goOut();return;}
@@ -1525,9 +1613,13 @@ function sanFurn(list,visiting){
   });
   return out;
 }
+/* 釣りの記録：{"魚の番号":[釣った数, いちばん大きい cm]} */
+function sanFish(v){var o={};if(!v||typeof v!=="object"||Array.isArray(v))return o;
+  for(var k=0;k<FISH.length;k++){var a=v[String(k)];if(Array.isArray(a)&&a.length===2&&typeof a[0]==="number"&&Math.floor(a[0])===a[0]&&a[0]>0&&a[0]<1e6&&typeof a[1]==="number"&&a[1]>=0&&a[1]<1000)o[k]=[a[0],Math.round(a[1])];}
+  return o;}
 function sanProfile(d){
   if(!d||typeof d!=="object"||!isUuid(d.id))return null;
-  return {id:d.id.toLowerCase(),name:clip(d.name,NAMEMAX,true)||NONAME,look:sanLook(d.look),pet:sanPet(d.pet),room:sanRoom(d.room),joinedAt:timeOf(d.joined_at)};
+  return {id:d.id.toLowerCase(),name:clip(d.name,NAMEMAX,true)||NONAME,look:sanLook(d.look),pet:sanPet(d.pet),room:sanRoom(d.room),joinedAt:timeOf(d.joined_at),fish:sanFish(d.fish)};
 }
 function sanStrips(list){
   var out=[];
@@ -1592,7 +1684,7 @@ function save(){if(phase!=="in")return;dirty=true;clearTimeout(saveT);saveT=setT
 function flushSave(){
   clearTimeout(saveT);if(!dirty||saving||phase!=="in"||!sb)return Promise.resolve();
   dirty=false;saving=true;
-  var body={look:{hair:look.hair,hc:look.hc,k:look.k,o:look.o},pet:petKind,room:encRoom(myRoomRef()),updated_at:new Date().toISOString()};
+  var body={look:{hair:look.hair,hc:look.hc,k:look.k,o:look.o},pet:petKind,room:encRoom(myRoomRef()),fish:fishRec,updated_at:new Date().toISOString()};
   return run(sb.from("profiles").update(body).eq("id",uid).select("id")).then(function(r){
     saving=false;if(phase!=="in")return;
     if(r.error)note("部屋を保存できなかった。"+errText(r.error));
@@ -2089,15 +2181,31 @@ function personRow(name,label,fn,on){
   if(label){var b=mk("button","btn small",label);b.type="button";b.addEventListener("click",fn);r.appendChild(b);}
   return r;
 }
+/* 釣りの図鑑：釣ったことのある魚は絵と数と大きさ、まだのものは「？」 */
+function drawZukan(box){box.textContent="";
+  var got=Object.keys(fishRec).length;box.appendChild(mk("h2","","釣りの図鑑　"+got+"／"+FISH.length));
+  var g=mk("div","zukan");
+  FISH.forEach(function(f,k){var r=fishRec[k],c=mk("div","zk"+(r?"":" no")),cv=document.createElement("canvas");cv.width=64;cv.height=64;
+    var x=cv.getContext("2d");x.imageSmoothingEnabled=false;
+    if(r){for(var i=0;i<N*N;i++){var v=f.px[i];if(!v)continue;x.fillStyle=PAL[v];x.fillRect((i%N)*2,Math.floor(i/N)*2,2,2);}}
+    else{x.fillStyle="rgba(244,239,228,.25)";for(var j=0;j<N*N;j++)if(f.px[j])x.fillRect((j%N)*2,Math.floor(j/N)*2,2,2);}
+    cv.setAttribute("aria-hidden","true");c.appendChild(cv);
+    c.appendChild(mk("div","zn",r?f.n:"？？？"));
+    c.appendChild(mk("div","zm",r?(r[0]+"匹"+(f.s?"・最大"+r[1]+"cm":"")):(f.r?"めずらしい":"")));
+    g.appendChild(c);});
+  box.appendChild(g);
+  box.appendChild(mk("p","hint","川沿いの町で、川の方を向いて橙のボタン。時間や天気で、釣れる魚が変わる。"));
+}
 function drawPeople(){
   var box=el("people");box.textContent="";
   box.appendChild(mk("p","hint","自分の住民名："+myName));
   var ids=otherIds();
-  if(!ids.length){box.appendChild(mk("p","hint","まだほかの住民はいない。"));return;}
+  if(!ids.length){box.appendChild(mk("p","hint","まだほかの住民はいない。"));drawZukan(el("zukan-box"));return;}
   /* 今ログインしている人を上に */
   var on=ids.filter(isOnline),off=ids.filter(function(id){return !isOnline(id);});
   box.appendChild(mk("p","hint","いま入っている人："+(on.length+1)+"人（自分を含む）"));
   on.concat(off).forEach(function(id){box.appendChild(personRow(profiles[id].name,"訪ねる",function(){visitRes(id);},isOnline(id)));});
+  drawZukan(el("zukan-box"));
 }
 
 /* ---- 手紙：読めるのは、出した人と受け取った人だけ ---- */
@@ -2448,7 +2556,7 @@ function checkEntry(){
 }
 function loadMe(my){
   Promise.all([
-    run(sb.from("profiles").select("id,name,look,pet,room,joined_at").eq("id",uid).maybeSingle()),
+    run(sb.from("profiles").select("id,name,look,pet,room,joined_at,fish").eq("id",uid).maybeSingle()),
     run(sb.from("furniture").select("id,name,top,px").eq("owner",uid).limit(MAXFURN))
   ]).then(function(r){
     if(my!==seq)return;
@@ -2461,7 +2569,7 @@ function loadMe(my){
   });
 }
 function enter(p){
-  myName=p.name;look=p.look;petKind=p.pet;room=p.room;profiles[uid]=p;
+  myName=p.name;look=p.look;petKind=p.pet;room=p.room;profiles[uid]=p;fishRec=p.fish||{};
   phase="in";where="mine";home=null;host=null;CHAR=makeChar(look);
   me.x=me.fx=2;me.y=me.fy=4;me.dir=[0,1];placeMe();placePet();
   drawAll();show("room");drawRoom();refresh();lobbyJoin();onlineJoin();liveJoin();
