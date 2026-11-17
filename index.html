@@ -486,15 +486,24 @@ function houseRand(hi,b){var v=Math.sin((hi+1)*12.9898+b*78.233)*43758.5453;retu
 var BENCH=[],SEATPX=11;
 for(var bi=0;bi<HOUSES;bi++)if(houseRand(bi,4)>.5){var bz0=PL*.45+(bi%6)*3.6;
   var bb0=PL+(bi%6)*8;
-  BENCH.push(bi<6?{x:1,y:bb0+1,X:.52/.45,Z:(bz0+.65)/.45+.1,cells:[[0,bb0],[1,bb0],[0,bb0+1],[1,bb0+1],[0,bb0+2],[1,bb0+2]]}
-    :{x:TCOLS-2,y:bb0+6,X:(TCOLS*.45-.52)/.45,Z:(bz0+3.6-.65)/.45+.1,cells:[[8,bb0+5],[9,bb0+5],[8,bb0+6],[9,bb0+6],[8,bb0+7],[9,bb0+7]]});}
+  var SO=.2/.45;/* 2人がけ：まん中から 0.2m ずつ */
+  BENCH.push(bi<6?{x:1,y:bb0+1,X:.52/.45,Z:(bz0+.65)/.45+.1,dir:[1,0],seats:[[.52/.45,(bz0+.65)/.45+.1-SO],[.52/.45,(bz0+.65)/.45+.1+SO]],cells:[[0,bb0],[1,bb0],[0,bb0+1],[1,bb0+1],[0,bb0+2],[1,bb0+2]]}
+    :{x:TCOLS-2,y:bb0+6,X:(TCOLS*.45-.52)/.45,Z:(bz0+3.6-.65)/.45+.1,dir:[-1,0],seats:[[(TCOLS*.45-.52)/.45,(bz0+3.6-.65)/.45+.1-SO],[(TCOLS*.45-.52)/.45,(bz0+3.6-.65)/.45+.1+SO]],cells:[[8,bb0+5],[9,bb0+5],[8,bb0+6],[9,bb0+6],[8,bb0+7],[9,bb0+7]]});}
 /* 広場の縁台（横向き、手前を向いて座る）。cx,cz は縁台のまん中（m） */
 [[.75,1.55],[3.75,1.55],[1.0,3.75],[3.5,3.75]].forEach(function(c){var cs=[],x,y;
-  for(x=Math.floor((c[0]-.3)/.45);x<=Math.floor((c[0]+.3)/.45);x++)for(y=Math.floor((c[1]-.1)/.45);y<=Math.floor((c[1]+.1)/.45);y++)cs.push([x,y]);
-  BENCH.push({x:Math.floor(c[0]/.45),y:Math.floor(c[1]/.45),X:c[0]/.45,Z:c[1]/.45+.1,plaza:c,cells:cs});});
+  for(x=Math.floor((c[0]-.4)/.45);x<=Math.floor((c[0]+.4)/.45);x++)for(y=Math.floor((c[1]-.1)/.45);y<=Math.floor((c[1]+.1)/.45);y++)cs.push([x,y]);
+  BENCH.push({x:Math.floor(c[0]/.45),y:Math.floor(c[1]/.45),X:c[0]/.45,Z:c[1]/.45+.1,dir:[0,1],seats:[[(c[0]-.2)/.45,c[1]/.45+.1],[(c[0]+.2)/.45,c[1]/.45+.1]],plaza:c,cells:cs});});
 BENCH.forEach(function(b){b.lift=SEATPX;b.name="縁台";});
 /* 広場の中で通れないマス：桜の幹と井戸 */
 function plazaBlock(x,y){return (y===0&&(x===4||x===5))||((y===5||y===6)&&(x===4||x===5));}
+/* 2人がけ：k 番目の席。座布団は1人がけ（席は1つ） */
+function seatSlot(b,k){if(!b)return null;if(!b.seats)return b;var q=b.seats[k]||b.seats[0];
+  return {X:q[0],Z:q[1],x:b.x,y:b.y,lift:b.lift,name:b.name,dir:b.dir,bench:b,slot:k===1?1:0};}
+function seatTaken(b,k){for(var id in live.others){var o=live.others[id];if(o.sit&&(o.sit===b||o.sit.bench===b)&&(o.sit.slot||0)===k)return true;}return false;}
+/* 空いている席。自分に近いほうから。どちらも埋まっていたら -1 */
+function freeSlot(b){if(!b.seats)return seatTaken(b,0)?-1:0;
+  var px=me.fx+.5,pz=me.fy+.5,d0=Math.hypot(b.seats[0][0]-px,b.seats[0][1]-pz),d1=Math.hypot(b.seats[1][0]-px,b.seats[1][1]-pz),o=d0<=d1?[0,1]:[1,0];
+  for(var i=0;i<2;i++)if(!seatTaken(b,o[i]))return o[i];return -1;}
 function benchAt(x,y){for(var i=0;i<BENCH.length;i++){var c=BENCH[i].cells;for(var j=0;j<c.length;j++)if(c[j][0]===x&&c[j][1]===y)return BENCH[i];}return null;}
 /* 座れる所：街は縁台、部屋はいちばん上が座布団のマス */
 function seatAt(x,y){if(where==="town")return benchAt(x,y);
@@ -868,7 +877,7 @@ function init3d(){
   q4([WX-.42,1.0,WZ+.35],[WX+.42,1.0,WZ+.35],[WX+.42,1.22,WZ],[WX-.42,1.22,WZ],[0,1,0],[0,0],[.84,0],[.84,.4],[0,.4],24);
   /* 広場の縁台（横向き） */
   BENCH.forEach(function(b){if(!b.plaza)return;var cx=b.plaza[0],cz=b.plaza[1];
-    box(cx-.3,.17,cz-.1,cx+.3,.21,cz+.1,25);[[-.27,-.07],[.23,-.07],[-.27,.03],[.23,.03]].forEach(function(l){box(cx+l[0],0,cz+l[1],cx+l[0]+.04,.17,cz+l[1]+.04,25);});});
+    box(cx-.4,.17,cz-.1,cx+.4,.21,cz+.1,25);[[-.37,-.07],[.33,-.07],[-.37,.03],[.33,.03]].forEach(function(l){box(cx+l[0],0,cz+l[1],cx+l[0]+.04,.17,cz+l[1]+.04,25);});});
   q4([-40,-12,-14],[RX+40,-12,-14],[RX+40,20,-14],[-40,20,-14],[0,0,1],[0,0],[0,0],[0,0],[0,0],31);
   /* 川の岩と苔（決まった乱数で並べる） */
   var rs=7;function rnd(){rs=(rs*16807)%2147483647;return rs/2147483647;}
@@ -911,7 +920,7 @@ function init3d(){
     b(-.1,top+roofH-.02,roofD-.08,3.7,top+roofH+.1,roofD+.08,24);
     f(0,top-.08,3.6,top,-.47,25,sd);
     var lu=h(0,6)>.5?.9:2.85;b(lu-.1,1.28,-.5,lu+.1,1.6,-.3,28);b(lu-.07,1.6,-.47,lu+.07,1.64,-.33,25);b(lu-.07,1.24,-.47,lu+.07,1.28,-.33,25);b(lu-.008,1.64,-.41,lu+.008,eave,-.39,25);
-    if(bench){b(.35,.17,-.62,.95,.21,-.42,25);b(.38,0,-.6,.42,.17,-.56,25);b(.88,0,-.6,.92,.17,-.56,25);b(.38,0,-.48,.42,.17,-.44,25);b(.88,0,-.48,.92,.17,-.44,25);}
+    if(bench){b(.25,.17,-.62,1.05,.21,-.42,25);b(.28,0,-.6,.32,.17,-.56,25);b(.98,0,-.6,1.02,.17,-.56,25);b(.28,0,-.48,.32,.17,-.44,25);b(.98,0,-.48,1.02,.17,-.44,25);}
     b(3.0,0,-.35,3.4,.18+h(0,7)*.15,-.05,35);
     var LP=P([lu,1.44,-.4]);HLANT.push([LP[0],LP[1],LP[2],hi]);}
   for(var hi=0;hi<HOUSES;hi++)house(hi);
@@ -1373,7 +1382,8 @@ function act(){
   if(a==="dress"){show("dress");return;}
   if(a==="write"){show("write");return;}
   if(a==="out"){goOut();return;}
-  if(a==="sit"){var f=front(),b=seatAt(f[0],f[1])||seatAt(me.x,me.y);if(!b)return;me.sit=b;me.x=me.fx=b.x;me.y=me.fy=b.y;me.from=[b.x,b.y];me.dir=[0,1];placePet();liveMe(b.x,b.y);setStatus(b.name+"に座った。");return;}
+  if(a==="sit"){var f=front(),b=seatAt(f[0],f[1])||seatAt(me.x,me.y);if(!b)return;var k=freeSlot(b);if(k<0){setStatus(b.name+"は、いっぱい。");return;}
+    me.sit=seatSlot(b,k);me.x=me.fx=b.x;me.y=me.fy=b.y;me.from=[b.x,b.y];me.dir=b.dir||[0,1];placePet();liveMe(b.x,b.y);setStatus(b.name+"に座った。");return;}
   if(a==="stand"){me.sit=null;liveMe(me.x,me.y);setStatus("立ち上がった。");return;}
   if(a==="door"){var o=houses()[doorAhead()];if(o)visitRes(o,true);return;}
   if(a==="homedoor"){goHome(true);return;}
@@ -1861,7 +1871,7 @@ function liveTrack(){if(live.ch&&live.ok){try{live.ch.track({x:me.x,y:me.y,dx:me
 function liveSend(ev,p){if(live.ch&&live.ok){try{live.ch.send({type:"broadcast",event:ev,payload:p});}catch(e){}}}
 /* 新しくつないだ人から「hi」が来たら、今の自分の位置を知らせる */
 function liveHello(){clearTimeout(live.hiT);live.hiT=setTimeout(function(){liveMe(me.x,me.y);},300);}
-function liveMe(x,y){liveSend("mv",{id:uid,x:x,y:y,dx:me.dir[0],dy:me.dir[1],s:me.sit?1:0});}
+function liveMe(x,y){liveSend("mv",{id:uid,x:x,y:y,dx:me.dir[0],dy:me.dir[1],s:me.sit?(me.sit.slot||0)+1:0});}
 function liveSync(){
   var st;try{st=live.ch.presenceState();}catch(e){return;}
   var next=Object.create(null),need=[];
@@ -1918,7 +1928,7 @@ function liveMove(p){
   o.x=p.x;o.y=p.y;o.t0=now;
   if(far)petBeside(o);
   if(okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
-  o.sit=p.s===1?seatAt(p.x,p.y):null;
+  o.sit=p.s===1||p.s===2?seatSlot(seatAt(p.x,p.y),p.s-1):null;
   liveKick();
 }
 function liveJump(p){
