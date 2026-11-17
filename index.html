@@ -591,7 +591,7 @@ function init3d(){
   "precision highp float;precision highp int;",
   "uniform vec3 uLamp;uniform vec3 uLampCol;uniform vec3 uCam;uniform float uTime;uniform vec2 uRes;",
   /* 時刻：uDay は昼の明るさ（0〜1）、空の上と地平の色、日（月）の光、まわりの光、霞 */
-  "uniform float uDay;uniform vec3 uSkyT;uniform vec3 uSkyH;uniform vec3 uSunC;uniform vec3 uAmbS;uniform vec3 uAmbG;uniform vec3 uFogC;",
+  "uniform float uRain;uniform float uSnow;uniform float uMist;uniform float uDay;uniform vec3 uSkyT;uniform vec3 uSkyH;uniform vec3 uSunC;uniform vec3 uAmbS;uniform vec3 uAmbG;uniform vec3 uFogC;",
   "const vec3 MOON=normalize(vec3(-0.22,0.5,-1.0));",
   "const vec4 WIN=vec4(1.8,3.24,0.85,1.75);",
   "float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}",
@@ -625,7 +625,9 @@ function init3d(){
   "else if(m==5){vec2 q=vU;if(bars(q)>.5){alb=lin(vec3(.20,.12,.07));ks=.06;}",
   "  else{vec3 sky=mix(uSkyT,uSkyH,1.-q.y);float d=length((q-vec2(.74,.70))*vec2(1.6,1.));",
   "    emit=sky+(1.-uDay)*vec3(1.,.95,.82)*(smoothstep(.065,.055,d)*2.6+.20*exp(-d*10.));",
-  "    emit+=step(uDay,.12)*vec3(.9,.9,1.)*step(.992,hash(floor(q*vec2(110.,70.))))*.25;",
+  "    emit+=step(uDay,.12)*(1.-uMist)*vec3(.9,.9,1.)*step(.992,hash(floor(q*vec2(110.,70.))))*.25;",
+  "    emit+=uRain*vec3(.55,.6,.7)*.25*step(.93,hash(vec2(floor(q.x*60.),floor(q.y*8.+uTime*9.+hash(vec2(floor(q.x*60.),1.))*8.))));",
+  "    emit+=uSnow*vec3(.9)*.5*step(.985,hash(floor(vec2(q.x*40.+sin(uTime+q.y*9.)*.6,q.y*30.+uTime*1.5))));",
   "    float roof=.20+.06*noise(vec2(q.x*9.,1.))+.05*step(.5,fract(q.x*2.9));if(q.y<roof)emit=mix(emit*.06,uSkyH*.35,uDay);",
   "    emit+=(1.-uDay)*vec3(1.,.7,.35)*.4*step(q.y,roof-.03)*step(.985,hash(floor(q*vec2(50.,30.))));alb=vec3(0.);}}",
   "else if(m==6){vec4 t=texture(uScroll,vU);alb=lin(t.rgb);}",
@@ -708,11 +710,14 @@ function init3d(){
   /* 苔・植え込み */
   "else if(m==35){alb=lin(vec3(.18,.32,.14))*(.6+.6*fbm(vP.xz*14.+vP.y*9.));}",
   "else{alb=lin(vec3(.06,.05,.05));}",
+  "if(N.y>.45&&m!=30&&m!=31){float sn=uSnow*smoothstep(.45,.8,N.y)*(.75+.25*noise(vP.xz*6.));alb=mix(alb,vec3(.86,.88,.92),sn);ks=mix(ks,.05,sn);}",
+  "if(uRain>0.&&N.y>.45&&m!=30){alb*=1.-.35*uRain;ks=max(ks,.55*uRain);sh=max(sh,60.);}",
+  "if(m==30&&uRain>0.){float rr=step(.985,hash(floor(vP.xz*vec2(14.,10.))+floor(uTime*6.)));emit+=vec3(.5,.6,.7)*rr*.25*uRain;}",
   "vec3 V=normalize(uCam-vP);vec3 c=vec3(0.);",
   "for(int i=0;i<6;i++){vec3 d=uL[i]-vP;float d2=dot(d,d);vec3 L=d*inversesqrt(d2);float nl=max(dot(N,L),0.);vec3 lc=uLc[i]/(d2+.10);",
   "  c+=alb*lc*nl+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*nl;}",
   "float sv=sunVis(vP);c+=alb*uSunC*.5*(.35+.65*max(dot(N,normalize(vec3(-.3,.8,.5))),0.))*mix(.25,1.,sv)+alb*mix(uAmbG,uAmbS,N.y*.5+.5)*mix(.75,1.,sv);",
-  "c+=emit;float fd=length(vP-uCam);c=mix(c,uFogC,1.-exp(-fd*(.035-.022*uDay)));o=vec4(tone(c),1.);}"].join("\n");
+  "c+=emit;float fd=length(vP-uCam);c=mix(c,uFogC,1.-exp(-fd*(.035-.022*uDay+.022*uMist)));o=vec4(tone(c),1.);}"].join("\n");
   var PR,PS,PT;try{PR=prog(ROOM_VS,ROOM_FS);PS=prog(SPR_VS,SPR_FS);PT=prog(ROOM_VS,TOWN_FS);}catch(e){return null;}
   /* 仕上げ：影の深さ、花びらと蛍、ぼかしとにじみ。どれかが使えなくても、今までどおり描く */
   var FX=null;
@@ -722,10 +727,12 @@ function init3d(){
     var PART_VS="#version 300 es\nuniform mat4 uVP;uniform float uT;uniform vec3 uC;uniform int uK;uniform float uPx;out float vA;out vec3 vCol;\n"+
       "float h(float n){return fract(sin(n*12.9898)*43758.5453);}\n"+
       "void main(){float i=float(gl_VertexID);vec3 P;float a=1.;\n"+
-      " if(uK==0){float x=-.4+h(i)*5.3,z=uC.z-9.+fract(h(i+7.)+uT*.015)*13.,fall=fract(h(i+3.)+uT*(.05+.04*h(i+5.)));P=vec3(x+sin(uT*.9+i)*.25,3.4-fall*3.4,z+cos(uT*.7+i)*.2);a=smoothstep(0.,.1,fall)*smoothstep(1.,.85,fall);vCol=vec3(1.,.78,.86);}\n"+
+      " if(uK==2){float x=-.6+h(i)*5.7,z=uC.z-8.+h(i+2.)*12.,fall=fract(h(i+3.)+uT*1.6);P=vec3(x,3.6-fall*3.8,z);a=.7;vCol=vec3(.82,.88,.98);}\n"+
+      " else if(uK==3){float x=-.5+h(i)*5.5,z=uC.z-8.+fract(h(i+7.)+uT*.01)*12.,fall=fract(h(i+3.)+uT*(.08+.05*h(i+5.)));P=vec3(x+sin(uT*.8+i)*.3,3.6-fall*3.7,z+cos(uT*.6+i)*.2);a=smoothstep(0.,.08,fall)*smoothstep(1.,.92,fall);vCol=vec3(.96,.97,1.);}\n"+
+      " else if(uK==0){float x=-.4+h(i)*5.3,z=uC.z-9.+fract(h(i+7.)+uT*.015)*13.,fall=fract(h(i+3.)+uT*(.05+.04*h(i+5.)));P=vec3(x+sin(uT*.9+i)*.25,3.4-fall*3.4,z+cos(uT*.7+i)*.2);a=smoothstep(0.,.1,fall)*smoothstep(1.,.85,fall);vCol=vec3(1.,.78,.86);}\n"+
       " else{float x=1.15+h(i)*2.2,z=uC.z-6.+h(i+2.)*10.;P=vec3(x+sin(uT*.6+i*3.)*.3,.25+h(i+4.)*.7+sin(uT*.9+i)*.1,z+cos(uT*.5+i*2.)*.3);a=pow(max(0.,sin(uT*1.7+i*20.)),3.);vCol=vec3(.85,1.,.45);}\n"+
-      " vec4 c=uVP*vec4(P,1.);gl_Position=c;gl_PointSize=min(28.,(uK==0?.06:.04)*uPx/max(c.w,.1));vA=a;}";
-    var PART_FS="#version 300 es\nprecision mediump float;precision highp int;in float vA;in vec3 vCol;uniform int uK;out vec4 o;void main(){vec2 d=gl_PointCoord-.5;float r=length(d*vec2(1.,uK==0?1.6:1.));if(r>.5)discard;float a=uK==0?(1.-smoothstep(.3,.5,r))*vA*.85:(1.-smoothstep(0.,.5,r))*vA;o=vec4(vCol*(uK==0?.9:2.2),a);}";
+      " vec4 c=uVP*vec4(P,1.);gl_Position=c;gl_PointSize=min(32.,(uK==0?.06:uK==2?.16:uK==3?.05:.04)*uPx/max(c.w,.1));vA=a;}";
+    var PART_FS="#version 300 es\nprecision mediump float;precision highp int;in float vA;in vec3 vCol;uniform int uK;out vec4 o;void main(){vec2 d=gl_PointCoord-.5;if(uK==2){if(abs(d.x)>.035)discard;o=vec4(vCol,vA*(1.-abs(d.y)*1.6));return;}float r=length(d*vec2(1.,uK==0?1.6:1.));if(r>.5)discard;float a=uK==0||uK==3?(1.-smoothstep(.3,.5,r))*vA*.9:(1.-smoothstep(0.,.5,r))*vA;o=vec4(vCol*(uK==1?2.2:.95),a);}";
     var PPV="#version 300 es\nout vec2 vUv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUv=p;gl_Position=vec4(p*2.-1.,0.,1.);}";
     var BLUR_FS="#version 300 es\nprecision mediump float;uniform sampler2D uTex;uniform vec2 uDir;in vec2 vUv;out vec4 o;void main(){vec4 c=texture(uTex,vUv)*.227;c+=(texture(uTex,vUv+uDir*1.385)+texture(uTex,vUv-uDir*1.385))*.316;c+=(texture(uTex,vUv+uDir*3.231)+texture(uTex,vUv-uDir*3.231))*.070;o=c;}";
     /* ジオラマ風：自分のいる高さはくっきり、上下ほどぼける。明るい所はにじむ */
@@ -956,7 +963,7 @@ function init3d(){
       var fl=reduce?1:(.92+.05*Math.sin(now*.0071)+.03*Math.sin(now*.0233+1.3)),i;
       var td=timeOfDay(),dim=1-.85*td.day;
       function base(P,lamp,lc){gl.uniformMatrix4fv(P.u.uVP,false,VP);gl.uniform3fv(P.u.uLamp,lamp);gl.uniform3fv(P.u.uLampCol,lc);gl.uniform3fv(P.u.uCam,camP);
-        gl.uniform1f(P.u.uDay,td.day);gl.uniform3fv(P.u.uSkyT,td.skyT);gl.uniform3fv(P.u.uSkyH,td.skyH);gl.uniform3fv(P.u.uSunC,td.sun);gl.uniform3fv(P.u.uAmbS,td.ambS);gl.uniform3fv(P.u.uAmbG,td.ambG);gl.uniform3fv(P.u.uFogC,td.fog);
+        gl.uniform1f(P.u.uDay,td.day);gl.uniform1f(P.u.uRain,td.w.rain);gl.uniform1f(P.u.uSnow,td.w.snow);gl.uniform1f(P.u.uMist,td.mist);gl.uniform3fv(P.u.uSkyT,td.skyT);gl.uniform3fv(P.u.uSkyH,td.skyH);gl.uniform3fv(P.u.uSunC,td.sun);gl.uniform3fv(P.u.uAmbS,td.ambS);gl.uniform3fv(P.u.uAmbG,td.ambG);gl.uniform3fv(P.u.uFogC,td.fog);
         gl.uniform1f(P.u.uTime,reduce?0:now/1000);gl.uniform2f(P.u.uRes,cv.width,cv.height);}
       var usePost=!!(FX&&FX.post&&fxSize(cv.width,cv.height));
       /* 街：日と月の影の深さを、ときどき描き直す（家が動かないので毎回は要らない） */
@@ -985,7 +992,7 @@ function init3d(){
         DECOR.forEach(function(d){list.push(d);});
         /* 切り絵は、いちばん近い明かりで照らし、その影を落とす */
         lampOf=function(s0){var b=near[0],bd=1e9;near.forEach(function(L){var dx=L.p[0]-s0.x,dz=L.p[2]-s0.z,dd=dx*dx+dz*dz;if(dd<bd){bd=dd;b=L;}});return b;};
-        gl.useProgram(PS.p);base(PS,near[0].p,near[0].c);gl.uniform1f(PS.u.uIn,0);gl.uniform3f(PS.u.uFill,.03+td.ambS[0]*.6+td.sun[0]*.10,.04+td.ambS[1]*.6+td.sun[1]*.10,.08+td.ambS[2]*.6+td.sun[2]*.10);gl.uniform1f(PS.u.uFog,.035-.022*td.day);shadowA=.40;
+        gl.useProgram(PS.p);base(PS,near[0].p,near[0].c);gl.uniform1f(PS.u.uIn,0);gl.uniform3f(PS.u.uFill,.03+td.ambS[0]*.6+td.sun[0]*.10,.04+td.ambS[1]*.6+td.sun[1]*.10,.08+td.ambS[2]*.6+td.sun[2]*.10);gl.uniform1f(PS.u.uFog,.035-.022*td.day+.022*td.mist);shadowA=.40;
       }else{
         roomCam();
         var wt=wallText();if(wt!==scText){scText=wt;drawScroll(wt);}
@@ -1012,8 +1019,10 @@ function init3d(){
       /* 花びら（いつも）と蛍（夕方から夜、川のそば） */
       if(FX&&where==="town"&&!reduce){var fzP=Math.max(1.2,Math.min(TL-1,(me.fy+.5)*CELL));gl.useProgram(FX.part.p);gl.bindVertexArray(FX.vaoE);
         gl.uniformMatrix4fv(FX.part.u.uVP,false,VP);gl.uniform1f(FX.part.u.uT,now/1000);gl.uniform3f(FX.part.u.uC,RX/2,0,fzP);gl.uniform1f(FX.part.u.uPx,cv.height/2*PROJ[5]);
-        gl.uniform1i(FX.part.u.uK,0);gl.drawArrays(gl.POINTS,0,70);
-        if(td.day<.4){gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.uniform1i(FX.part.u.uK,1);gl.drawArrays(gl.POINTS,0,36);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);}}
+        var pc=Math.round(90*td.w.petal);if(pc>0){gl.uniform1i(FX.part.u.uK,0);gl.drawArrays(gl.POINTS,0,pc);}
+        if(td.w.rain>.05){gl.uniform1i(FX.part.u.uK,2);gl.drawArrays(gl.POINTS,0,Math.round(260*td.w.rain));}
+        if(td.w.snow>.05){gl.uniform1i(FX.part.u.uK,3);gl.drawArrays(gl.POINTS,0,Math.round(200*td.w.snow));}
+        if(td.day<.4&&td.w.rain<.3&&td.w.snow<.3){gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.uniform1i(FX.part.u.uK,1);gl.drawArrays(gl.POINTS,0,36);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);}}
       gl.depthMask(true);gl.disable(gl.BLEND);
       if(usePost){
         var W2=Math.max(1,cv.width>>1),H2=Math.max(1,cv.height>>1);
@@ -1037,12 +1046,26 @@ var TOD={night:{skyT:[.003,.006,.02],skyH:[.016,.024,.06],sun:[.20,.26,.50],ambS
   gold:{skyT:[.10,.13,.30],skyH:[.95,.48,.22],sun:[1.1,.62,.30],ambS:[.10,.09,.12],ambG:[.09,.06,.045],fog:[.36,.24,.20]},
   day:{skyT:[.16,.34,.78],skyH:[.58,.72,.90],sun:[1.35,1.25,1.08],ambS:[.20,.25,.33],ambG:[.16,.14,.11],fog:[.46,.55,.66]}};
 function jstHour(){var h=(Date.now()%3600000)/3600000*24;try{if(typeof window.__rokujoHour==="number")h=window.__rokujoHour;}catch(e){}return h;}
+/* 天気：晴れ・曇り・雨・雪・桜。12分ごとに時計から選び、1分かけて移る。全員に同じ天気が見える（2026-11-17、はる） */
+var WEATHERS=[["晴れ",.35],["桜",.20],["曇り",.20],["雨",.15],["雪",.10]],WPERIOD=720000;
+function pickWeather(i){var x=Math.sin(i*127.1+311.7)*43758.5453;x-=Math.floor(x);for(var k=0;k<WEATHERS.length;k++){x-=WEATHERS[k][1];if(x<0)return k;}return 0;}
+function weatherAmounts(k){return [{cloud:0,rain:0,snow:0,petal:.25},{cloud:.1,rain:0,snow:0,petal:1},{cloud:.75,rain:0,snow:0,petal:0},{cloud:1,rain:1,snow:0,petal:0},{cloud:.85,rain:0,snow:1,petal:0}][k];}
+function weatherNow(){
+  var t=Date.now();try{if(typeof window.__rokujoWeather==="number"){var f=weatherAmounts(window.__rokujoWeather);f.name=WEATHERS[window.__rokujoWeather][0];return f;}}catch(e){}
+  var i=Math.floor(t/WPERIOD),cur=pickWeather(i),prev=pickWeather(i-1),m=Math.min(1,(t%WPERIOD)/60000),a=weatherAmounts(prev),b=weatherAmounts(cur),o={name:WEATHERS[cur][0]};
+  ["cloud","rain","snow","petal"].forEach(function(k){o[k]=a[k]+(b[k]-a[k])*m;});return o;
+}
 function timeOfDay(){
   var h=jstHour(),ss=function(a,b,x){var t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
   var wd=ss(6.3,8.5,h)*(1-ss(16,18,h)),bell=function(c){var d=(h-c)/1.2;return Math.exp(-d*d);};
   var wg=Math.max(bell(5.9),bell(17.6))*(1-wd),wn=Math.max(0,1-wd-wg),sum=wd+wg+wn,o={day:wd+.35*wg,h:h};
   ["skyT","skyH","sun","ambS","ambG","fog"].forEach(function(k){o[k]=[0,1,2].map(function(i){return (TOD.day[k][i]*wd+TOD.gold[k][i]*wg+TOD.night[k][i]*wn)/sum;});});
   o.name=h<5||h>=19?"夜":h<9?"朝":h<16?"昼":"夕方";
+  /* 天気を重ねる：雲は空を灰色にし、日差しを弱め、霞を濃くする。雪の日は少し明るい灰色 */
+  var w=weatherNow(),cl=w.cloud,gy=function(c,amt,bright){var l=(c[0]*.3+c[1]*.59+c[2]*.11)*bright;return c.map(function(v){return v+(l-v)*amt;});};
+  var br=1+.25*w.snow-.45*w.rain;o.skyT=gy(o.skyT,cl*.85,br);o.skyH=gy(o.skyH,cl*.8,br);o.fog=gy(o.fog,cl*.7,br*.85);
+  o.sun=o.sun.map(function(v){return v*(1-.7*cl);});o.ambS=o.ambS.map(function(v){return v*(1+.35*cl*o.day);});
+  o.w=w;o.wname=w.name;o.mist=Math.max(w.rain*.5,w.snow*.4,cl*.25);
   return o;
 }
 /* 立体のときは、決まった間隔で描き直す（行灯のゆらぎ）。部屋を見ていないときは描かない */
@@ -1548,7 +1571,7 @@ function discardFurn(cur){
 }
 
 /* ---- お茶：数えるのはデータ側 ---- */
-function drawTea(){try{var tn=timeOfDay().name;el("tod").textContent=tn;el("hud-tod").textContent=tn+(tea!==null?"　お茶 あと"+tea+"杯":"");}catch(e){}el("tea").textContent=(phase==="in"&&tea!==null)?"今日のお茶 あと"+tea+"杯":"";}
+function drawTea(){try{var tn=timeOfDay().name;el("tod").textContent=tn;var wn=weatherNow().name;el("tod").textContent=tn+"・"+wn;el("hud-tod").textContent=tn+"・"+wn+(tea!==null?"　お茶 あと"+tea+"杯":"");}catch(e){}el("tea").textContent=(phase==="in"&&tea!==null)?"今日のお茶 あと"+tea+"杯":"";}
 function loadTea(){
   return run(sb.rpc("tea_left")).then(function(r){
     if(!r.error&&typeof r.data==="number"&&isFinite(r.data))tea=Math.max(0,Math.min(TEAMAX,Math.floor(r.data)));
@@ -2412,7 +2435,7 @@ function sndTick(){
     if(st%8===0)pluck(t,hz(st%16?-2:-5),.12);
     if(st%16===0)pad(t,[146.83,220,329.63],beat*14,.016);
     snd.next+=beat;}
-  snd.waterG.gain.setTargetAtTime(where==="town"?.05:.01,c.currentTime,1.5);
+  var wr=weatherNow().rain;snd.waterG.gain.setTargetAtTime((where==="town"?.05:.01)+wr*(where==="town"?.09:.05),c.currentTime,1.5);
 }
 function sndSet(on){
   if(on&&!snd.ctx&&!sndInit()){setStatus("この端末では音を出せない。");return;}
