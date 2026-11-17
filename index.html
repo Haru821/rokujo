@@ -2518,7 +2518,9 @@ document.addEventListener("visibilitychange",function(){if(!snd.ctx)return;try{i
 try{R3=init3d();}catch(e){R3=null;}
 /* 立体のときは、画面の形を携帯に合わせて縦に伸ばす（横長 14:9 のままだと小さかった） */
 /* 携帯（指で触る画面か、幅640px以下）で部屋か街を見ているときは、画面だけで遊ぶ形にする */
-function playWanted(){var coarse=false;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(e){}return !!R3&&phase==="in"&&mode==="room"&&(coarse||window.innerWidth<=640);}
+/* 画面いっぱいの形は、直すまで止めておく（2026-11-17、はる）。試すときは URL の末尾に #play */
+var PLAY_ON=false;try{PLAY_ON=location.hash==="#play";}catch(e){}
+function playWanted(){if(!PLAY_ON)return false;var coarse=false;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(e){}return !!R3&&phase==="in"&&mode==="room"&&(coarse||window.innerWidth<=640);}
 function syncPlay(){
   var on=playWanted(),b=document.body;b.classList.toggle("play",on);
   if(!on){b.classList.remove("menu","saying","strips");el("view-room").style.top="";el("view-room").style.height="";}
