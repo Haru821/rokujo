@@ -223,7 +223,7 @@ a.btn{display:block;text-decoration:none;text-align:center}
     </div>
     <div class="field">
       <label for="post-in">新しい短冊（80字まで）</label>
-      <textarea id="post-in" class="brush write" maxlength="80" rows="3" placeholder="いま思ったことを一言"></textarea>
+      <textarea id="post-in" class="brush write" maxlength="160" rows="3" placeholder="いま思ったことを一言"></textarea>
     </div>
     <div class="row">
       <span class="count" id="post-left"></span>
@@ -248,7 +248,7 @@ a.btn{display:block;text-decoration:none;text-align:center}
     </div>
     <div class="field">
       <label for="let-in">手紙（400字まで）</label>
-      <textarea id="let-in" class="brush write" maxlength="400" rows="6" placeholder="拝啓"></textarea>
+      <textarea id="let-in" class="brush write" maxlength="800" rows="6" placeholder="拝啓"></textarea>
     </div>
     <div class="row">
       <span class="count" id="let-left"></span>
@@ -470,6 +470,12 @@ function cut(id,px){
 }
 function shadow(X,Z){if(R3&&R3.collecting){R3.blob(X,Z);return;}var b=pr(X,Z,0),sc=T*b[2]/32;rx.fillStyle="rgba(60,55,30,0.28)";rx.beginPath();rx.ellipse(b[0],b[1]+2*sc,13*sc,3.2*sc,0,0,6.2832);rx.fill();}
 function stand(id,px,X,Z,lift){if(R3&&R3.collecting){R3.stand(id,px,X,Z,lift);return;}var b=pr(X,Z,0),sc=T*b[2]/32;rx.drawImage(cut(id,px),b[0]-17*sc,b[1]-29*sc-lift*sc,34*sc,34*sc);}
+/* 文字を見た目の1字ずつに分ける。絵文字（肌の色、家族、国旗のような組み合わせも）を割らない。
+   Intl.Segmenter のない古いブラウザでは、少なくとも絵文字の片割れにはならない分け方にする */
+var GSEG=null;try{if(typeof Intl!=="undefined"&&Intl.Segmenter)GSEG=new Intl.Segmenter("ja",{granularity:"grapheme"});}catch(e){}
+function glyphs(s){s=String(s==null?"":s);if(GSEG){try{return Array.from(GSEG.segment(s),function(g){return g.segment;});}catch(e){}}return Array.from(s);}
+/* 縦書きの掛け軸に入るだけ並べる。入りきらないときは最後の1字を「…」にする */
+function scrollGlyphs(text,n){var a=glyphs(String(text||"").replace(/\s+/g,""));return a.length>n?a.slice(0,n-1).concat("…"):a;}
 function wallText(){
   /* 壁の掛け軸は、その部屋の主のいちばん新しい短冊 */
   var who=where==="mine"?uid:visitId;
@@ -486,11 +492,11 @@ function drawRoom(){
   quad([A,D,Dt,At],"#b3a582");quad([B,C,Ct,Bt],"#c0b28f");quad([D,C,Ct,Dt],"#cdbf9f");
   quad([pr(COLS,1,0),pr(COLS,3,0),pr(COLS,3,150),pr(COLS,1,150)],"#5a3a22");quad([pr(COLS,1.12,0),pr(COLS,2.88,0),pr(COLS,2.88,142),pr(COLS,1.12,142)],"#e9dcc0");
   bw(0.5,3.4,48,202,"#f4efe4");bw(0.42,3.48,202,208,"#5a3a22");bw(0.42,3.48,42,48,"#5a3a22");bw(0.6,0.8,56,72,"#c2452d");
-  var txt=wallText().replace(/\s+/g,""),tr=pr(3.4,0,202),bl=pr(0.5,0,48),FS=14,PX=17,PY=16;
+  var tr=pr(3.4,0,202),bl=pr(0.5,0,48),FS=14,PX=17,PY=16;
   var rowsN=Math.max(1,Math.floor((bl[1]-tr[1]-10)/PY)),colsN=Math.max(1,Math.floor((tr[0]-bl[0]-14)/PX));
-  if(txt.length>rowsN*colsN)txt=txt.slice(0,rowsN*colsN-1)+"…";
+  var txt=scrollGlyphs(wallText(),rowsN*colsN);
   rx.fillStyle="#1b1622";rx.font=FS+'px "Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif';rx.textAlign="center";rx.textBaseline="middle";
-  for(i=0;i<txt.length;i++){var ch=txt.charAt(i),tx=tr[0]-8-Math.floor(i/rowsN)*PX-PX/2,ty=tr[1]+8+(i%rowsN)*PY+PY/2;
+  for(i=0;i<txt.length;i++){var ch=txt[i],tx=tr[0]-8-Math.floor(i/rowsN)*PX-PX/2,ty=tr[1]+8+(i%rowsN)*PY+PY/2;
     if("、。".indexOf(ch)>=0)rx.fillText(ch,tx+FS*0.55,ty-FS*0.5);
     else if("ー〜…—".indexOf(ch)>=0){rx.save();rx.translate(tx,ty);rx.rotate(Math.PI/2);rx.fillText(ch,0,0);rx.restore();}
     else rx.fillText(ch,tx,ty);}
@@ -844,13 +850,13 @@ function init3d(){
   /* 掛け軸：その部屋の主のいちばん新しい短冊を、筆の字で縦に書く */
   var sc=document.createElement("canvas");sc.width=320;sc.height=304;var scT=mkTex(sc,false),scText=null;
   function drawScroll(text){var g=sc.getContext("2d");g.fillStyle="#efe6d0";g.fillRect(0,0,320,304);g.fillStyle="#e6dcc3";g.fillRect(10,8,300,288);g.fillStyle="#f6efdd";g.fillRect(20,18,280,268);
-    var txt=text.replace(/\s+/g,""),FS=26,PX=32,PY=30,rowsN=8,colsN=8;if(txt.length>rowsN*colsN)txt=txt.slice(0,rowsN*colsN-1)+"…";
+    var FS=26,PX=32,PY=30,rowsN=8,colsN=8,txt=scrollGlyphs(text,rowsN*colsN);
     g.fillStyle="#1b1622";g.font=FS+'px "Yuji Syuku","Hiragino Mincho ProN","Yu Mincho",serif';g.textAlign="center";g.textBaseline="middle";
-    for(var i=0;i<txt.length;i++){var ch=txt.charAt(i),tx=290-Math.floor(i/rowsN)*PX-PX/2,ty=26+(i%rowsN)*PY+PY/2;
+    for(var i=0;i<txt.length;i++){var ch=txt[i],tx=290-Math.floor(i/rowsN)*PX-PX/2,ty=26+(i%rowsN)*PY+PY/2;
       if("、。".indexOf(ch)>=0)g.fillText(ch,tx+FS*.55,ty-FS*.5);
       else if("ー〜…—".indexOf(ch)>=0){g.save();g.translate(tx,ty);g.rotate(Math.PI/2);g.fillText(ch,0,0);g.restore();}
       else g.fillText(ch,tx,ty);}
-    if(!txt){g.fillStyle="#8a8578";g.font='18px "DotGothic16",monospace';g.fillText("（白紙）",160,152);}
+    if(!txt.length){g.fillStyle="#8a8578";g.font='18px "DotGothic16",monospace';g.fillText("（白紙）",160,152);}
     g.fillStyle="#c2452d";g.fillRect(36,250,14,14);
     gl.bindTexture(gl.TEXTURE_2D,scT);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,sc);}
   try{document.fonts.load('26px "Yuji Syuku"',"短冊").then(function(){scText=null;},function(){});}catch(e){}
@@ -1586,13 +1592,18 @@ function drawMyReplies(){
   box.appendChild(mk("p","hint",any?"返事に返すには、その人の部屋を訪ねて、その人の短冊に返事を書く。お茶を1杯使う。":"まだ返事は付いていない。"));
 }
 var postIn=el("post-in"),letIn=el("let-in");
-function left(){el("post-left").textContent="あと"+(POSTMAX-postIn.value.length)+"字";el("let-left").textContent="あと"+(LETMAX-letIn.value.length)+"字";}
+/* 字数は、データベースの決まり（char_length）と clip() と同じく、コードポイントで数える。
+   ふつうの絵文字は1字。家族や国旗のような組み合わせは何字分かになる。超えたら「○字多い」と出す */
+function overBy(v,max){return Math.max(0,Array.from(v).length-max);}
+function leftText(v,max){var n=Array.from(v).length;return n>max?(n-max)+"字多い":"あと"+(max-n)+"字";}
+function left(){el("post-left").textContent=leftText(postIn.value,POSTMAX);el("let-left").textContent=leftText(letIn.value,LETMAX);}
 postIn.addEventListener("input",left);letIn.addEventListener("input",left);
 var posting=false;
 el("post-go").addEventListener("click",function(){
-  var t=clip(postIn.value,POSTMAX),st=el("post-status");
+  var t=clip(postIn.value,POSTMAX),st=el("post-status"),over=overBy(clip(postIn.value,POSTMAX*2),POSTMAX);
   if(phase!=="in"||posting)return;
   if(!t){st.textContent="まだ何も書かれていない。";return;}
+  if(over){st.textContent="短冊は"+POSTMAX+"字まで。"+over+"字多い。";return;}
   posting=true;st.textContent="吊るしている…";
   run(sb.from("strips").insert({owner:uid,body:t}).select("id,owner,body,created_at").single()).then(function(r){
     posting=false;
@@ -1977,10 +1988,11 @@ function drawLetters(){
 }
 var mailing=false;
 el("let-go").addEventListener("click",function(){
-  var t=clip(letIn.value,LETMAX),st=el("let-status"),to=el("let-to").value;
+  var t=clip(letIn.value,LETMAX),st=el("let-status"),to=el("let-to").value,over=overBy(clip(letIn.value,LETMAX*2),LETMAX);
   if(phase!=="in"||mailing)return;
   if(!to||!profiles[to]||to===uid){st.textContent="宛先の住民を選ぶ。";return;}
   if(!t){st.textContent="まだ何も書かれていない。";return;}
+  if(over){st.textContent="手紙は"+LETMAX+"字まで。"+over+"字多い。";return;}
   mailing=true;st.textContent="封をしている…";
   run(sb.from("letters").insert({sender:uid,recipient:to,body:t})).then(function(r){
     mailing=false;
