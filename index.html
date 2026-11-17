@@ -1190,7 +1190,7 @@ function jump(){
   me.jumping=true;me.t0=performance.now();liveSend("jp",{id:uid});requestAnimationFrame(jumpTick);
 }
 function jumpTick(now){
-  var k=(now-me.t0)/380;
+  var k=Math.max(0,(now-me.t0)/380);
   if(k>=1){me.jumping=false;me.jz=0;drawRoom();if(hold.dir)holdGo();return;}
   me.jz=Math.round(Math.sin(Math.PI*k)*12);drawRoom();requestAnimationFrame(jumpTick);
 }
@@ -1205,7 +1205,8 @@ function walkTo(tx,ty){
   petFollow([me.x,me.y]);me.path=p;me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();requestAnimationFrame(tick);
 }
 function tick(now){
-  var seg=me.path[0],k=(now-me.t0)/(me.hop?STEP*1.6:STEP);
+  /* 絵を描く合図の時刻は、歩き始めより前のことがある（重い端末）。そのときは0から */
+  var seg=me.path[0],k=Math.max(0,(now-me.t0)/(me.hop?STEP*1.6:STEP));
   me.dir=[seg[0]-me.from[0],seg[1]-me.from[1]];
   if(k>=1){me.x=me.fx=seg[0];me.y=me.fy=seg[1];me.path.shift();me.from=[me.x,me.y];me.t0=now;me.k=0;
     if(!me.path.length){me.moving=false;me.hop=false;drawRoom();if(hold.dir)holdGo();return;}
