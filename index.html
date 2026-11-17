@@ -976,7 +976,11 @@ function init3d(){
     proj:function(X,Z){var c=clip([X*CELL,0,Z*CELL]),w=c[2]||1e-6;return [(c[0]/w*.5+.5)*W,(1-(c[1]/w*.5+.5))*H,32/T*S3*(H/2)*PROJ[5]/w];},
     projW:function(p){var c=clip(p),w=c[2];if(w<=.1)return null;var sx=(c[0]/w*.5+.5)*W,sy=(1-(c[1]/w*.5+.5))*H;if(sx<-60||sx>W+60||sy<-30||sy>H+30)return null;return [sx,sy,0,Math.hypot(p[0]-camP[0],p[1]-camP[1],p[2]-camP[2])];},
     begin:function(){list=[];blobs=[];collecting=true;},
-    stand:function(key,px,X,Z,lift){list.push({k:key,px:px,x:X*CELL,z:Z*CELL-Math.min(Math.max(lift,0),8)*.012,y:lift*S3,ft:footRows(key,px)});},
+    /* 部屋の中で物の上に乗ったもの（ちゃぶ台の湯のみ、座布団に座った人、家具に乗った人や猫）は、
+       下の家具の紙に隠れないよう少し手前に置く。高く乗ったものほど手前にして、重なった紙同士がちらつかないようにする。
+       街（橋の上など）は今までどおり少し奥に置く */
+    stand:function(key,px,X,Z,lift){var up=Math.max(lift,0),dz=where==="town"?-Math.min(up,8)*.012:up>0?.01+Math.min(up,60)*.0015:0;
+      list.push({k:key,px:px,x:X*CELL,z:Z*CELL+dz,y:lift*S3,ft:footRows(key,px)});},
     blob:function(X,Z){blobs.push([X*CELL,Z*CELL]);},
     /* 触った所から床をたどって、どのマスか。部屋の外なら壁の短冊を触ったかを返す */
     pick:function(px,py){var nx=px/W*2-1,ny=1-py/H*2,t=Math.tan(FOV/2),d=norm([-fz[0]+nx*t*W/H*fx[0]+ny*t*fy[0],-fz[1]+nx*t*W/H*fx[1]+ny*t*fy[1],-fz[2]+nx*t*W/H*fx[2]+ny*t*fy[2]]);
