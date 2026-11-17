@@ -429,10 +429,31 @@ function makeChar(L){return art(function(R,P){var h=L.hc,k=L.k;
   R(13,25,2,4,16);R(17,25,2,4,16);R(13,29,2,1,1);R(17,29,2,1,1);});}
 function lookKey(){return "__me"+look.hair+"-"+look.hc+"-"+look.k+"-"+look.o;}
 var CHAR=makeChar(look);
-/* 連れ歩く猫 */
-var PETC=[0,1,2,5],PETN=["なし","黒猫","白猫","茶トラ"],petKind=1;
+/* 連れ歩くペット：猫3、犬2、うさぎ2、カタツムリ2、羊2（2026-11-17、はる）。番号はデータベースに残るので並びを変えない */
+var PETN=["なし","黒猫","白猫","茶トラ","柴犬","黒柴","白うさぎ","茶うさぎ","カタツムリ","紫のカタツムリ","白い羊","黒い羊"],petKind=1,PETMAX=PETN.length-1;
+/* 犬（左向き）。c 体、w 口元と胸、e 目、m 眉 */
+function makeDog(c,w,e,m){return art(function(R,P){
+  R(11,20,11,6,c);R(12,26,2,4,c);R(19,26,2,4,c);R(14,24,5,2,w);
+  R(7,15,7,7,c);R(4,18,4,3,c);R(4,20,5,2,w);R(10,20,3,3,w);P(3,18,1);
+  R(8,12,2,3,c);R(12,12,2,3,c);P(9,13,1);P(13,13,1);P(9,17,e);if(m)P(9,16,m);
+  R(20,16,3,2,c);R(22,13,2,4,c);R(21,13,1,1,c);});}
+/* うさぎ（左向き、すわる）。c 体、e 目 */
+function makeRabbit(c,e){return art(function(R,P){
+  R(13,19,8,10,c);R(12,21,10,7,c);R(7,16,7,6,c);R(9,8,2,8,c);R(12,9,2,7,c);R(9,10,1,5,14);R(12,11,1,4,14);
+  P(9,18,e);P(7,19,14);R(10,28,4,2,c);R(17,28,5,2,c);R(22,22,2,2,2);if(c===2)R(22,22,2,2,16);});}
+/* カタツムリ（左向き）。s 殻、d 渦、b 体 */
+function makeSnail(s,d,b){return art(function(R,P){
+  R(5,26,18,3,b);R(5,22,3,4,b);R(5,18,1,4,b);R(7,19,1,3,b);P(5,17,1);P(7,18,1);
+  R(12,14,6,1,s);R(10,15,10,1,s);R(9,16,12,8,s);R(10,24,10,1,s);R(11,25,8,1,s);
+  R(12,17,6,1,d);R(17,17,1,6,d);R(12,22,6,1,d);R(12,19,1,4,d);R(14,19,2,1,d);P(15,20,d);});}
+/* モフモフの羊（左向き）。w 毛、t 毛の影、f 顔と足、e 目 */
+function makeSheep(w,t,f,e){return art(function(R,P){
+  R(12,13,4,2,w);R(17,12,4,2,w);R(22,13,3,2,w);R(10,15,17,9,w);R(11,24,15,2,w);R(9,17,1,5,w);R(27,17,1,4,w);
+  [[13,17],[18,15],[22,18],[15,21],[20,22],[24,16],[11,20],[17,19]].forEach(function(q){P(q[0],q[1],t);P(q[0]+1,q[1],t);});
+  R(12,26,2,4,f);R(15,26,2,4,f);R(20,26,2,4,f);R(23,26,2,4,f);
+  R(5,15,6,6,f);R(4,18,2,3,f);R(6,12,5,3,w);R(11,16,2,2,f);P(7,17,e);});}
 function makePet(c){return art(function(R,P){var e=c===1?9:1;R(11,22,10,6,c);R(9,17,7,7,c);P(9,16,c);P(10,15,c);P(15,16,c);P(14,15,c);P(11,20,e);P(14,20,e);R(21,18,2,6,c);R(22,16,2,3,c);R(12,28,2,2,c);R(18,28,2,2,c);});}
-var PETPX=PETC.map(function(c){return c?makePet(c):null;}),pet={x:1,y:4,from:[1,4],t0:0};
+var PETPX=[null,makePet(1),makePet(2),makePet(5),makeDog(8,2,1,0),makeDog(1,2,6,6),makeRabbit(2,7),makeRabbit(5,1),makeSnail(5,4,16),makeSnail(15,14,16),makeSheep(2,16,1,2),makeSheep(1,3,16,1)],pet={x:1,y:4,from:[1,4],t0:0};
 var START=[[5,0,"p-ishoudai"],[1,0,"p-hondana"],[7,0,"p-andon"],[4,3,"p-chabudai"],[4,3,"p-yunomi"],[3,3,"p-zabuton"],[5,3,"p-zabuton"],[6,4,"p-zabuton"],[6,4,"p-neko"],[0,5,"p-hachiue"],[1,2,"p-futon"]];
 
 var custom=[],room=[],mode="room",bagOpen=false,lastBase=null,where="mine",home=null;
@@ -1464,7 +1485,7 @@ function sanLook(v){
   if(v&&typeof v==="object"){if(v.hair===0||v.hair===1||v.hair===2)L.hair=v.hair;if(HCS.indexOf(v.hc)>=0)L.hc=v.hc;if(KS.indexOf(v.k)>=0)L.k=v.k;if(OS.indexOf(v.o)>=0)L.o=v.o;}
   return L;
 }
-function sanPet(v){return (v===0||v===1||v===2||v===3)?v:0;}
+function sanPet(v){return typeof v==="number"&&v>=0&&v<=PETMAX&&Math.floor(v)===v?v:0;}
 function startRoom(){var r=emptyRoom();START.forEach(function(s){r[s[1]*COLS+s[0]].push(s[2]);});return r;}
 /* 部屋は48個の文字列で保存する。1マスの重なりは "," でつなぐ */
 function encRoom(r){return r.map(function(c){return c.join(",");});}
