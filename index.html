@@ -1404,12 +1404,12 @@ var fishRec={},fishing=null;
 function fishSpot(){if(where!=="town"||me.sit||me.y<PL||me.dir[1]!==0)return false;
   if(!((me.x===2&&me.dir[0]===1)||(me.x===TCOLS-3&&me.dir[0]===-1)))return false;
   return !onBridge(me.x,me.y)&&!onBridge(me.x+me.dir[0],me.y);}
-function fishEnd(){if(!fishing)return;clearTimeout(fishing.tm);fishing=null;actNow="";syncAct();}
+function fishEnd(){if(!fishing)return;clearTimeout(fishing.tm);fishing=null;actNow="";syncAct();liveMe(me.x,me.y);}
 function fishStart(){
   fishing={st:"wait",t0:performance.now(),tm:setTimeout(fishBite,2500+Math.random()*6000)};
-  setStatus("糸を垂らした。浮きが沈んだら、橙のボタンで上げる。");actNow="";syncAct();
+  setStatus("糸を垂らした。浮きが沈んだら、橙のボタンで上げる。");actNow="";syncAct();liveMe(me.x,me.y);
 }
-function fishBite(){if(!fishing)return;fishing.st="bite";fishing.t1=performance.now();
+function fishBite(){if(!fishing)return;fishing.st="bite";fishing.t1=performance.now();liveMe(me.x,me.y);
   setStatus("引いている！ いま上げる。");try{if(navigator.vibrate)navigator.vibrate(80);}catch(e){}
   fishing.tm=setTimeout(function(){if(fishing&&fishing.st==="bite"){fishEnd();setStatus("逃げられた。もう一度、橙のボタンで糸を垂らす。");}},1400);}
 function fishTod(){var h=jstHour();return h<5||h>=19?0:h<9?1:h<16?2:3;}
@@ -1428,15 +1428,21 @@ function fishReel(){
 }
 setInterval(function(){if(fishing&&(me.moving||me.jumping||where!=="town"||phase!=="in"))fishEnd();},300);
 /* 糸と浮き（立体のときだけ） */
-function fishDraw(now){
-  if(!fishing||!R3||!R3.projW)return;var d=me.dir[0],z=(me.fy+.82)*.45;
-  var hand=R3.projW([(me.fx+.5+d*.2)*.45,.42,z]),tip=R3.projW([(me.fx+.5+d*1.3)*.45,1.05,z]),bob=R3.projW([(me.x+.5+d*2.2)*.45,-.47,z]);
+/* 糸と浮き（立体のときだけ）。自分も、ほかの人も同じ絵。fx,fy は立つ位置、cx は立つマス、d は向き、bite は引いているか */
+function fishLine(fx,fy,cx,d,bite,t1,now){
+  var z=(fy+.82)*.45,hand=R3.projW([(fx+.5+d*.2)*.45,.42,z]),tip=R3.projW([(fx+.5+d*1.3)*.45,1.05,z]),bob=R3.projW([(cx+.5+d*2.2)*.45,-.47,z]);
   if(!hand||!tip)return;
   rx.strokeStyle="#c79a5a";rx.lineWidth=2.5;rx.beginPath();rx.moveTo(hand[0],hand[1]);rx.lineTo(tip[0],tip[1]);rx.stroke();
-  if(!bob)return;var bite=fishing.st==="bite",dy=bite?3+Math.sin(now/60)*1.5:Math.sin(now/450)*1.2,bx=bob[0],by=bob[1]+dy;
+  if(!bob)return;var dy=bite?3+Math.sin(now/60)*1.5:Math.sin(now/450)*1.2,bx=bob[0],by=bob[1]+dy;
   rx.strokeStyle="rgba(244,239,228,.75)";rx.lineWidth=1;rx.beginPath();rx.moveTo(tip[0],tip[1]);rx.quadraticCurveTo((tip[0]+bx)/2,Math.max(tip[1],by)+10,bx,by-3);rx.stroke();
-  if(bite){var rr=((now-fishing.t1)/6)%14;rx.strokeStyle="rgba(244,239,228,"+(0.6-rr/24)+")";rx.beginPath();rx.ellipse(bob[0],bob[1]+2,6+rr,(6+rr)*.4,0,0,6.2832);rx.stroke();}
+  if(bite){var rr=((now-t1)/6)%14;rx.strokeStyle="rgba(244,239,228,"+(0.6-rr/24)+")";rx.beginPath();rx.ellipse(bob[0],bob[1]+2,6+rr,(6+rr)*.4,0,0,6.2832);rx.stroke();}
   rx.fillStyle="#e2553a";rx.beginPath();rx.arc(bx,by-2,4,Math.PI,0);rx.fill();rx.fillStyle="#f4efe4";rx.beginPath();rx.arc(bx,by-2,4,0,Math.PI);rx.fill();
+}
+function fishDraw(now){
+  if(!R3||!R3.projW||where!=="town")return;
+  if(fishing)fishLine(me.fx,me.fy,me.x,me.dir[0],fishing.st==="bite",fishing.t1||0,now);
+  /* ほかの人：釣っている合図（f が 1 待つ、2 引いている）を受けた人だけ */
+  for(var id in live.others){var o=live.others[id];if(!o.fish||o.moving||!o.dir||o.dir[1]!==0)continue;fishLine(o.x,o.y,o.x,o.dir[0],o.fish===2,o.fishT||0,now);}
 }
 function syncAct(){
   var a=actTarget();if(a===actNow)return;
@@ -1952,7 +1958,7 @@ function liveTrack(){if(live.ch&&live.ok){try{live.ch.track({x:me.x,y:me.y,dx:me
 function liveSend(ev,p){if(live.ch&&live.ok){try{live.ch.send({type:"broadcast",event:ev,payload:p});}catch(e){}}}
 /* 新しくつないだ人から「hi」が来たら、今の自分の位置を知らせる */
 function liveHello(){clearTimeout(live.hiT);live.hiT=setTimeout(function(){liveMe(me.x,me.y);},300);}
-function liveMe(x,y){liveSend("mv",{id:uid,x:x,y:y,dx:me.dir[0],dy:me.dir[1],s:me.sit?(me.sit.slot||0)+1:0});}
+function liveMe(x,y){liveSend("mv",{id:uid,x:x,y:y,dx:me.dir[0],dy:me.dir[1],s:me.sit?(me.sit.slot||0)+1:0,f:fishing?(fishing.st==="bite"?2:1):0});}
 function liveSync(){
   var st;try{st=live.ch.presenceState();}catch(e){return;}
   var next=Object.create(null),need=[];
@@ -2010,6 +2016,7 @@ function liveMove(p){
   if(far)petBeside(o);
   if(okDir(p.dx,p.dy))o.dir=[p.dx,p.dy];
   o.sit=p.s===1||p.s===2?seatSlot(seatAt(p.x,p.y),p.s-1):null;
+  var nf=p.f===1||p.f===2?p.f:0;if(nf===2&&o.fish!==2)o.fishT=now;o.fish=moved?0:nf;
   liveKick();
 }
 function liveJump(p){
