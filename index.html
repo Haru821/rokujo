@@ -472,6 +472,16 @@ FISH.forEach(function(f,k){var a=f.a;
     R(9,14,14,1,2);R(8,15,16,1,16);R(8,16,16,10,12);R(9,26,14,1,12);R(10,27,12,1,12);R(7,17,1,8,16);R(24,17,1,8,16);R(12,28,8,2,3);P(10,17,2);P(10,18,2);
     if(a.kind==="zari"){R(13,22,6,2,7);R(11,21,2,1,7);R(11,24,2,1,7);}else{var c=a.c===12?2:a.c;R(12,20,7,3,c);R(19,19,2,5,a.f===12?2:a.f);P(13,20,1);R(12,22,7,1,a.b===12?2:a.b);}
     R(14,25,2,1,10);R(18,24,1,2,11);})});});
+/* 九重坂の人たちの切り絵 */
+var NPCPX={
+  baba:art(function(R,P){R(13,6,6,3,3);R(14,4,4,2,3);R(13,9,6,5,16);P(14,11,1);P(17,11,1);R(11,14,10,11,7);R(13,15,6,9,2);R(10,16,2,6,7);R(20,16,2,6,7);R(13,25,2,4,13);R(17,25,2,4,13);R(13,29,2,1,1);R(17,29,2,1,1);}),
+  oyaji:art(function(R,P){R(12,7,8,2,2);R(13,9,6,5,6);P(14,11,1);P(17,11,1);R(14,13,4,1,4);R(11,14,10,11,2);R(12,16,8,9,4);R(10,15,2,6,2);R(20,15,2,6,2);R(13,25,2,4,13);R(17,25,2,4,13);}),
+  uranai:art(function(R,P){R(12,5,8,4,15);R(11,8,10,18,15);R(13,9,6,5,13);P(14,11,9);P(17,11,9);R(10,26,12,3,15);R(14,21,4,4,12);P(15,21,2);}),
+  kodomo:art(function(R,P){R(13,11,6,2,1);R(13,13,6,4,16);P(14,15,1);P(17,15,1);R(12,17,8,6,9);R(13,23,6,3,12);R(13,26,2,3,16);R(17,26,2,3,16);}),
+  kitsune:art(function(R,P){R(11,20,10,5,8);R(7,15,7,6,8);R(5,18,3,2,8);P(4,18,1);R(8,13,2,3,8);R(12,13,2,3,8);P(8,13,1);P(13,13,1);R(7,19,5,2,2);P(9,16,1);R(12,25,2,4,8);R(18,25,2,4,8);R(12,28,2,1,1);R(18,28,2,1,1);R(21,17,4,3,8);R(24,14,3,4,8);R(25,12,3,3,2);}),
+  byakko:art(function(R,P){R(11,20,10,5,2);R(7,15,7,6,2);R(5,18,3,2,2);P(4,18,1);R(8,13,2,3,2);R(12,13,2,3,2);P(8,13,7);P(13,13,7);P(9,16,7);P(10,17,7);R(12,25,2,4,2);R(18,25,2,4,2);R(21,17,4,3,2);R(24,13,3,5,2);R(25,11,3,3,16);R(16,21,3,1,7);}),
+  kitsunemen:art(function(R,P){R(13,7,6,7,2);P(13,6,2);P(18,6,2);P(14,9,7);P(17,9,7);R(15,12,2,1,7);P(14,8,7);P(17,8,7);R(11,14,10,12,1);R(12,15,8,2,13);R(21,16,2,6,1);R(22,22,3,4,9);R(13,26,2,3,1);R(17,26,2,3,1);})
+};
 /* 城下町の切り絵：和傘（3色）、松、屋台（2つ） */
 var KASA=[[7,2],[14,2],[15,9]].map(function(c){return art(function(R,P){var k=c[0],d=c[1];
   R(14,6,4,1,k);R(11,7,10,1,k);R(9,8,14,1,k);R(7,9,18,2,k);R(6,11,20,2,k);R(5,13,22,2,k);P(15,5,4);P(16,5,4);
@@ -547,14 +557,76 @@ var BRIDGES=[PL+15,PL+31];
 /* ---- 城下町（2026-11-17、はる）：川沿いの町の広場の奥の門から入る。
    下（手前）から：大門、提灯と旗の商店街、神社と五重塔の広場、堀と赤い橋、奥に天守 ---- */
 var JCOLS=14,JROWS=60,JOKA_ID="7a0d0000-0000-4000-8000-000000000004";
-function outside(){return where==="town"||where==="joka";}
+function outside(){return where==="town"||where==="joka"||where==="kuju";}
 /* 歩ける所。広場の神社（左）・おみくじ・五重塔（右）・鳥居の柱はふさがる。堀は橋だけ */
 function jBlock(x,y){return (x<=2&&y>=14&&y<=16)||(x===4&&(y===15||y===16))||(x>=10&&y>=14&&y<=17)||((x===0||x===3)&&y===20);}
 function jWalk(x,y){if(x<0||x>=JCOLS||y<0||y>=JROWS)return false;
   if(y>=55)return x>=3&&x<=10;if(y>=53)return x>=4&&x<=9;if(y>=22)return x>=3&&x<=10;if(y>=14)return !jBlock(x,y);if(y>=8)return x===6||x===7;if(y>=4)return x>=2&&x<=11;return false;}
 function jArch(z){var t=(z-3.45)/3.0;return t<=0||t>=1?0:.28*Math.sin(Math.PI*t);}
-function gw(){return where==="town"?TCOLS:where==="joka"?JCOLS:COLS;}
-function gh(){return where==="town"?TROWS:where==="joka"?JROWS:ROWS;}
+/* ---- 九重坂（2026-11-18、はる）：九份（山の斜面の石段、赤い提灯、茶屋）と九龍城砦（迷路の路地、積み重なる建物、
+   配管と電線、看板）を混ぜた迷宮。坂は奥ほど高い。地図は決まった乱数で作るので、誰が見ても同じ形 ---- */
+var KW=34,KH=44,KUJU_ID="7a0d0000-0000-4000-8000-000000000005",KM=null;
+function kMake(){
+  var rs=20261118;function rnd(){rs=(rs*16807)%2147483647;return rs/2147483647;}
+  var W=KW,H=KH,walk=new Uint8Array(W*H),feat=new Uint8Array(W*H),i,x,y;
+  function op(x,y){if(x>0&&x<W-1&&y>0&&y<H)walk[y*W+x]=1;}
+  /* 1マス幅の路地の迷路。建物は2マスの厚さ（3マスおきの点を結ぶ） */
+  var SP=3,nx=Math.floor((W-2)/SP)+1,ny=Math.floor((H-2)/SP)+1,seen=new Uint8Array(nx*ny),st=[[0,0]];seen[0]=1;op(1,1);
+  function link(a,b,c,d){var x0=SP*a+1,y0=SP*b+1,x1=SP*c+1,y1=SP*d+1;for(var xx=Math.min(x0,x1);xx<=Math.max(x0,x1);xx++)for(var yy=Math.min(y0,y1);yy<=Math.max(y0,y1);yy++)op(xx,yy);}
+  while(st.length){var c=st[st.length-1],nb=[[1,0],[-1,0],[0,1],[0,-1]].filter(function(d){var a=c[0]+d[0],b=c[1]+d[1];return a>=0&&a<nx&&b>=0&&b<ny&&SP*a+1<W-1&&SP*b+1<H&&!seen[b*nx+a];});
+    if(!nb.length){st.pop();continue;}var d=nb[Math.floor(rnd()*nb.length)],a=c[0]+d[0],b=c[1]+d[1];seen[b*nx+a]=1;link(c[0],c[1],a,b);st.push([a,b]);}
+  /* ところどころ近道を足して、ぐるっと回れる道も作る */
+  for(i=0;i<28;i++){var a0=Math.floor(rnd()*(nx-1)),b0=Math.floor(rnd()*(ny-1));if(rnd()<.5)link(a0,b0,a0+1,b0);else link(a0,b0,a0,b0+1);}
+  /* 老街：入口から上の茶屋まで、くねる2マス幅の坂 */
+  function sx(y){return Math.round(W/2-1+4*Math.sin(y*.21)+2*Math.sin(y*.57));}
+  for(y=4;y<H;y++){var a1=sx(y),a2=sx(Math.min(H-1,y+1));for(x=Math.min(a1,a2);x<=Math.max(a1,a2)+1;x++)op(x,y);feat[y*W+a1]|=1;}
+  /* 竪崎路のような、まっすぐ長い石段 */
+  for(y=9;y<40;y++){op(6,y);op(7,y);feat[y*W+6]|=1;}
+  /* 茶屋の前の広場と、海の見える縁 */
+  for(y=6;y<=11;y++)for(x=21;x<=31;x++)op(x,y);
+  for(y=6;y<=11;y++)feat[y*W+(W-1)]|=4;
+  /* 稲荷：左上の行き止まりに、鳥居のトンネル */
+  for(y=2;y<=13;y++){op(3,y);feat[y*W+3]|=2;}for(x=2;x<=4;x++){op(x,2);op(x,3);}
+  /* 入口の前 */
+  for(y=H-3;y<H;y++)for(x=W/2-3;x<=W/2+2;x++)op(x,y);
+  var gnd=new Float32Array(W*H),top=new Float32Array(W*H),zone=new Uint8Array(W*H);
+  for(y=0;y<H;y++)for(x=0;x<W;x++){var k=y*W+x;gnd[k]=Math.round(((H-1-y)/(H-1))*4.4/.18)*.18;
+    zone[k]=x<16&&y>12&&y<38?1:0;
+    if(!walk[k])top[k]=gnd[k]+(feat[k]&4?.45:zone[k]?5.0+rnd()*3.6:2.4+rnd()*1.6+(rnd()<.15?1.0:0));}
+  return {W:W,H:H,walk:walk,feat:feat,gnd:gnd,top:top,zone:zone,rnd:rnd};
+}
+function km(){if(!KM)KM=kMake();return KM;}
+function kWalk(x,y){var m=km();return x>=0&&x<m.W&&y>=0&&y<m.H&&!!m.walk[y*m.W+x];}
+function kGnd(x,y){var m=km();x=Math.max(0,Math.min(m.W-1,x));y=Math.max(0,Math.min(m.H-1,y));return m.gnd[y*m.W+x];}
+/* 九重坂では、矢印は「画面から見て」前後左右。押し続けている間は向きの基準を変えない */
+var KQ=0,kLast=0;
+function kRemap(d){if(where!=="kuju"||!d)return d;var now=performance.now();
+  if(now-kLast>450&&!me.moving)KQ=me.dir[1]===-1?0:me.dir[0]===1?1:me.dir[1]===1?2:3;kLast=now;
+  var dx=d[0],dy=d[1];for(var i=0;i<KQ;i++){var t=dx;dx=-dy;dy=t;}return [dx,dy];}
+/* ---- 九重坂の人たち（NPC）。動きは時計で決まるので、誰の画面でも同じ所にいる ---- */
+var KNPC=null;
+function kNpcs(){if(KNPC)return KNPC;var m=km(),rs=777;function rnd(){rs=(rs*16807)%2147483647;return rs/2147483647;}
+  function walkPath(sx,sy,n){var p=[[sx,sy]],x=sx,y=sy,pd=null;for(var i=0;i<n;i++){var ds=[[1,0],[-1,0],[0,1],[0,-1]].filter(function(d){return kWalk(x+d[0],y+d[1])&&!(pd&&d[0]===-pd[0]&&d[1]===-pd[1]);});
+      if(!ds.length)ds=[[-pd[0],-pd[1]]];var d=ds[Math.floor(rnd()*ds.length)];x+=d[0];y+=d[1];pd=d;p.push([x,y]);}return p.concat(p.slice(1,-1).reverse());}
+  KNPC=[
+    {n:"茶屋の婆さん",px:NPCPX.baba,at:[26,6],lines:["お茶、飲んでいくかい。","この坂は、上るほど古くなる。","雨なのに日が出たら、狐が嫁に行くよ。","道に迷ったら、提灯の色を追いな。"]},
+    {n:"屋台のおやじ",px:NPCPX.oyaji,at:[17,30],lines:["芋圓、あったかいよ。","上の路地には、夜しか開かない店がある。","看板の字？ 誰も読めないさ。"]},
+    {n:"占い師",px:NPCPX.uranai,at:[5,24],lines:["……あんたの色は、まだ薄い。","迷った数だけ、道は増える。","狐に名前を聞かれても、答えちゃいけない。"]},
+    {n:"子ども",px:NPCPX.kodomo,path:walkPath(16,38,90),lines:["かくれんぼしてるの。","上の茶屋から、海が見えるよ。","狐のお面の人、見た？"]},
+    {n:"猫",px:PETPX[2],path:walkPath(9,20,70),lines:["にゃ。","……（毛づくろいをしている）"]},
+    {n:"狐",px:NPCPX.kitsune,path:walkPath(12,14,80),night:1,lines:["コン。","……（じっと見ている）","コン、コン。"]},
+    {n:"狐",px:NPCPX.kitsune,path:walkPath(24,22,80),night:1,lines:["コン。","……（尾をふった）"]},
+    {n:"白狐",px:NPCPX.byakko,at:[3,4],lines:["よく来た。","この先は、帰り道がひとつ減る。","稲荷に、油揚げを。"]},
+    {n:"狐面の人",px:NPCPX.kitsunemen,path:walkPath(10,30,100),night:1,lines:["今夜は、どこへ行く。","この街は、昨日と少し違う。","お面の下？ 見ないほうがいい。"]}];
+  KNPC.forEach(function(n,i){n.key="__npc"+i;n.li=0;});return KNPC;}
+var NPCSTEP=650;
+function kNpcAt(n,now){if(n.at)return {x:n.at[0],y:n.at[1],fx:n.at[0],fy:n.at[1]};var t=Date.now()/NPCSTEP+n.key.length*7,L=n.path.length,i=Math.floor(t)%L,f=t-Math.floor(t),a=n.path[i],b=n.path[(i+1)%L];
+  var k=Math.min(1,f*1.6);return {x:a[0],y:a[1],fx:a[0]+(b[0]-a[0])*k,fy:a[1]+(b[1]-a[1])*k};}
+function kNpcOn(n){if(!n.night)return true;var td=timeOfDay();return td.day<.45;}
+function kNpcFront(){if(where!=="kuju")return null;var f=front(),now=performance.now(),best=null;kNpcs().forEach(function(n){if(!kNpcOn(n))return;var q=kNpcAt(n,now);if(Math.round(q.fx)===f[0]&&Math.round(q.fy)===f[1])best=n;});return best;}
+function kTalk(n){var t=n.lines[n.li%n.lines.length];n.li++;n.say={t:t,until:performance.now()+5000};setStatus(n.n+"「"+t+"」");}
+function gw(){return where==="town"?TCOLS:where==="joka"?JCOLS:where==="kuju"?KW:COLS;}
+function gh(){return where==="town"?TROWS:where==="joka"?JROWS:where==="kuju"?KH:ROWS;}
 /* 家は、入った順に1軒ずつ（住民の表の入った日時の順）。0〜5は左の岸、6〜11は右の岸 */
 function houses(){var a=[];for(var id in profiles)if(profiles[id])a.push(id);
   a.sort(function(x,y){return (profiles[x].joinedAt-profiles[y].joinedAt)||(x<y?-1:1);});return a.slice(0,HOUSES);}
@@ -583,7 +655,7 @@ function freeSlot(b){if(!b.seats)return seatTaken(b,0)?-1:0;
   for(var i=0;i<2;i++)if(!seatTaken(b,o[i]))return o[i];return -1;}
 function benchAt(x,y){for(var i=0;i<BENCH.length;i++){var c=BENCH[i].cells;for(var j=0;j<c.length;j++)if(c[j][0]===x&&c[j][1]===y)return BENCH[i];}return null;}
 /* 座れる所：街は縁台、部屋はいちばん上が座布団のマス */
-function seatAt(x,y){if(where==="town")return benchAt(x,y);if(where==="joka")return null;
+function seatAt(x,y){if(where==="town")return benchAt(x,y);if(where==="joka"||where==="kuju")return null;
   if(x<0||x>=COLS||y<0||y>=ROWS||!room[y*COLS+x])return null;var st=room[y*COLS+x];
   if(!st.length||st[st.length-1]!=="p-zabuton")return null;return {x:x,y:y,X:x+.5,Z:y+.82,lift:stackTop(y*COLS+x),name:"座布団"};}
 /* 座った姿：上半身を4画素下げ、脚をたたむ */
@@ -608,9 +680,10 @@ function archM(xm){var t=(xm-1.15)/2.2;return t<=0||t>=1?0:.3*Math.sin(Math.PI*t
 function doorAhead(){if(where!=="town"||me.y<PL)return -1;var r=(me.y-PL)%8;if(r!==3&&r!==4)return -1;
   if(me.x===0&&me.dir[0]===-1&&me.dir[1]===0)return Math.floor((me.y-PL)/8);
   if(me.x===TCOLS-1&&me.dir[0]===1&&me.dir[1]===0)return 6+Math.floor((me.y-PL)/8);return -1;}
-function stackTop(k){if(where==="joka"){var jx=k%JCOLS,jy=Math.floor(k/JCOLS);return jy>=8&&jy<=13&&(jx===6||jx===7)?Math.round(jArch((jy+.5)*CELLM)/SPX):0;}
+function stackTop(k){if(where==="kuju"){var mm=km();return Math.round(mm.gnd[Math.max(0,Math.min(mm.W*mm.H-1,k))]/SPX);}
+  if(where==="joka"){var jx=k%JCOLS,jy=Math.floor(k/JCOLS);return jy>=8&&jy<=13&&(jx===6||jx===7)?Math.round(jArch((jy+.5)*CELLM)/SPX):0;}
   if(where==="town"){var x=k%TCOLS,y=Math.floor(k/TCOLS);return onBridge(x,y)?Math.round(archM((x+.5)*CELLM)/SPX):0;}var z=0;room[k].forEach(function(id){var it=find(id);if(it)z+=it.top||0;});return z;}
-function walkable(cx,cy){if(where==="joka")return jWalk(cx,cy);if(where==="town")return cx>=0&&cx<TCOLS&&cy>=0&&cy<TROWS&&(cy<PL?!plazaBlock(cx,cy):((cx<3||cx>6)||onBridge(cx,cy)));return cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&!(host&&host.x===cx&&host.y===cy)&&stackTop(cy*COLS+cx)<=4;}
+function walkable(cx,cy){if(where==="kuju")return kWalk(cx,cy);if(where==="joka")return jWalk(cx,cy);if(where==="town")return cx>=0&&cx<TCOLS&&cy>=0&&cy<TROWS&&(cy<PL?!plazaBlock(cx,cy):((cx<3||cx>6)||onBridge(cx,cy)));return cx>=0&&cx<COLS&&cy>=0&&cy<ROWS&&!(host&&host.x===cx&&host.y===cy)&&stackTop(cy*COLS+cx)<=4;}
 
 /* ---- 部屋を描く ---- */
 var rc=document.getElementById("room"),rx=rc.getContext("2d");
@@ -766,8 +839,8 @@ function init3d(){
   "vec3 c=alb*lc*max(dot(N,L),0.)+lc*ks*pow(max(dot(N,normalize(L+V)),0.),sh)*max(dot(N,L),0.);",
   "c+=moonC(alb,vP,N)+ambient(alb,N,a)+emit;o=vec4(tone(c),1.);}"].join("\n");
   /* mode 0：紙の切り絵　1：明かりが床に落とす影　2：足もとの影　3：目の前の畳の橙の印 */
-  var SPR_VS="#version 300 es\nlayout(location=0)in vec2 aC;uniform mat4 uVP;uniform vec3 uO;uniform vec2 uSz;uniform int uMode;uniform vec3 uLamp;uniform float uSway;uniform float uT;\nout vec2 vT;out vec3 vP;out vec2 vL;out float vFade;\n"+[
-  "void main(){vec3 P=uO+vec3(aC.x*uSz.x,aC.y*uSz.y,0.);P.x+=sin(uT*1.3+uO.z*1.7)*uSway*aC.y*aC.y;vT=vec2(aC.x+.5,1.-aC.y);vL=aC;vFade=1.;",
+  var SPR_VS="#version 300 es\nlayout(location=0)in vec2 aC;uniform mat4 uVP;uniform vec3 uO;uniform vec3 uRight;uniform vec2 uSz;uniform int uMode;uniform vec3 uLamp;uniform float uSway;uniform float uT;\nout vec2 vT;out vec3 vP;out vec2 vL;out float vFade;\n"+[
+  "void main(){vec3 P=uO+uRight*(aC.x*uSz.x+sin(uT*1.3+uO.z*1.7)*uSway*aC.y*aC.y)+vec3(0.,aC.y*uSz.y,0.);vT=vec2(aC.x+.5,1.-aC.y);vL=aC;vFade=1.;",
   "if(uMode==1){vec3 Q=P;Q.y=min(Q.y,uLamp.y-.03);float t=uLamp.y/(uLamp.y-Q.y);vec3 Sh=uLamp+(Q-uLamp)*t;vec2 h=Sh.xz-uLamp.xz;float l=length(h);",
   "  if(l>2.6){Sh.xz=uLamp.xz+h/l*2.6;}vFade=1.-smoothstep(.4,2.6,l);P=vec3(Sh.x,.003,Sh.z);}",
   "if(uMode==2){P=uO+vec3(aC.x*uSz.x*.9,.002,(aC.y-.5)*uSz.x*.45);}",
@@ -845,6 +918,10 @@ function init3d(){
   "  else if(hs<.66){vec2 c=(vU-vec2(.42,.5))*vec2(2.4,4.);g=1.-smoothstep(.05,.14,abs(length(c)-1.));g=max(g,step(.72,vU.x)*(1.-smoothstep(0.,.07,abs(abs(vU.y-.5)-(vU.x-.72)*1.3))));g=max(g,1.-smoothstep(.02,.05,length((vU-vec2(.3,.56))*vec2(1.,.5))));}",
   "  else{vec2 f=fract(vU*vec2(5.,3.))-.5;g=1.-smoothstep(.03,.09,abs(abs(f.x)+abs(f.y)-.42));}",
   "  g=max(g,1.-smoothstep(0.,.05,min(min(vU.x,1.-vU.x),min(vU.y,1.-vU.y))));alb=lin(vec3(.05,.04,.06));emit=nc*g*(.55+1.1*(1.-uDay))*(.93+.07*sin(uTime*3.+hs*20.));}",
+  /* 九重坂の窓：十字の枠とガラス。灯る窓は色がまちまち */
+  "else if(m==40){vec2 q=vU;float e=min(min(q.x,1.-q.x),min(q.y,1.-q.y));float fr=1.-smoothstep(.05,.09,e);float bar=max(1.-smoothstep(.02,.05,abs(q.x-.5)),1.-smoothstep(.02,.05,abs(q.y-.55)));float w=max(fr,bar);",
+  "  vec3 wc=hs<.35?vec3(1.,.48,.16):hs<.6?vec3(1.,.66,.30):hs<.74?vec3(.35,.62,1.):hs<.88?vec3(1.,.32,.42):vec3(.40,1.,.58);",
+  "  alb=w>.5?lin(vec3(.14,.12,.10)):lin(vec3(.04,.05,.07));ks=w>.5?.04:.14;sh=60.;if(w<.5)emit=wc*lit*(.06+.30*(1.-uDay))*(.6+.4*noise(q*2.+vSeed));}",
   "else if(m==39){alb=lin(vec3(.86,.64,.24));ks=.9;sh=80.;emit=alb*(.04+.10*(1.-uDay));}",
   "else{alb=lin(vec3(.06,.05,.05));}",
   "if(N.y>.45&&m!=30&&m!=31){float sn=uSnow*smoothstep(.45,.8,N.y)*(.75+.25*noise(vP.xz*6.));alb=mix(alb,vec3(.86,.88,.92),sn);ks=mix(ks,.05,sn);}",
@@ -864,10 +941,10 @@ function init3d(){
     var PART_VS="#version 300 es\nuniform mat4 uVP;uniform float uT;uniform vec3 uC;uniform int uK;uniform float uPx;out float vA;out vec3 vCol;\n"+
       "float h(float n){return fract(sin(n*12.9898)*43758.5453);}\n"+
       "void main(){float i=float(gl_VertexID);vec3 P;float a=1.;\n"+
-      " if(uK==2){float x=-.6+h(i)*5.7,z=uC.z-8.+h(i+2.)*12.,fall=fract(h(i+3.)+uT*1.6);P=vec3(x,3.6-fall*3.8,z);a=.7;vCol=vec3(.82,.88,.98);}\n"+
-      " else if(uK==3){float x=-.5+h(i)*5.5,z=uC.z-8.+fract(h(i+7.)+uT*.01)*12.,fall=fract(h(i+3.)+uT*(.08+.05*h(i+5.)));P=vec3(x+sin(uT*.8+i)*.3,3.6-fall*3.7,z+cos(uT*.6+i)*.2);a=smoothstep(0.,.08,fall)*smoothstep(1.,.92,fall);vCol=vec3(.96,.97,1.);}\n"+
-      " else if(uK==0){float x=-.4+h(i)*5.3,z=uC.z-9.+fract(h(i+7.)+uT*.015)*13.,fall=fract(h(i+3.)+uT*(.05+.04*h(i+5.)));P=vec3(x+sin(uT*.9+i)*.25,3.4-fall*3.4,z+cos(uT*.7+i)*.2);a=smoothstep(0.,.1,fall)*smoothstep(1.,.85,fall);vCol=vec3(1.,.78,.86);}\n"+
-      " else{float x=1.15+h(i)*2.2,z=uC.z-6.+h(i+2.)*10.;P=vec3(x+sin(uT*.6+i*3.)*.3,.25+h(i+4.)*.7+sin(uT*.9+i)*.1,z+cos(uT*.5+i*2.)*.3);a=pow(max(0.,sin(uT*1.7+i*20.)),3.);vCol=vec3(.85,1.,.45);}\n"+
+      " if(uK==2){float x=uC.x-2.85+h(i)*5.7,z=uC.z-8.+h(i+2.)*12.,fall=fract(h(i+3.)+uT*1.6);P=vec3(x,3.6-fall*3.8,z);a=.7;vCol=vec3(.82,.88,.98);}\n"+
+      " else if(uK==3){float x=uC.x-2.75+h(i)*5.5,z=uC.z-8.+fract(h(i+7.)+uT*.01)*12.,fall=fract(h(i+3.)+uT*(.08+.05*h(i+5.)));P=vec3(x+sin(uT*.8+i)*.3,3.6-fall*3.7,z+cos(uT*.6+i)*.2);a=smoothstep(0.,.08,fall)*smoothstep(1.,.92,fall);vCol=vec3(.96,.97,1.);}\n"+
+      " else if(uK==0){float x=uC.x-2.65+h(i)*5.3,z=uC.z-9.+fract(h(i+7.)+uT*.015)*13.,fall=fract(h(i+3.)+uT*(.05+.04*h(i+5.)));P=vec3(x+sin(uT*.9+i)*.25,3.4-fall*3.4,z+cos(uT*.7+i)*.2);a=smoothstep(0.,.1,fall)*smoothstep(1.,.85,fall);vCol=vec3(1.,.78,.86);}\n"+
+      " else{float x=uC.x-1.1+h(i)*2.2,z=uC.z-6.+h(i+2.)*10.;P=vec3(x+sin(uT*.6+i*3.)*.3,.25+h(i+4.)*.7+sin(uT*.9+i)*.1,z+cos(uT*.5+i*2.)*.3);a=pow(max(0.,sin(uT*1.7+i*20.)),3.);vCol=vec3(.85,1.,.45);}\n"+
       " vec4 c=uVP*vec4(P,1.);gl_Position=c;gl_PointSize=min(32.,(uK==0?.06:uK==2?.16:uK==3?.05:.04)*uPx/max(c.w,.1));vA=a;}";
     var PART_FS="#version 300 es\nprecision mediump float;precision highp int;in float vA;in vec3 vCol;uniform int uK;out vec4 o;void main(){vec2 d=gl_PointCoord-.5;if(uK==2){if(abs(d.x)>.035)discard;o=vec4(vCol,vA*(1.-abs(d.y)*1.6));return;}float r=length(d*vec2(1.,uK==0?1.6:1.));if(r>.5)discard;float a=uK==0||uK==3?(1.-smoothstep(.3,.5,r))*vA*.9:(1.-smoothstep(0.,.5,r))*vA;o=vec4(vCol*(uK==1?2.2:.95),a);}";
     var PPV="#version 300 es\nout vec2 vUv;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));vUv=p;gl_Position=vec4(p*2.-1.,0.,1.);}";
@@ -1016,7 +1093,11 @@ function init3d(){
   (function(){var x0=3.12,x1=4.08;box(x0,0,-.02,x0+.12,1.62,.1,36);box(x1-.12,0,-.02,x1,1.62,.1,36);box(x0-.12,1.5,-.03,x1+.12,1.6,.1,36);
     box(x0-.22,1.6,-.08,x1+.22,1.68,.16,24);q4([x0-.26,1.68,.2],[x1+.26,1.68,.2],[x1+.12,1.86,0],[x0-.12,1.86,0],[0,1,1],[0,0],[1,0],[1,1],[0,1],24);
     box(x0-.14,1.84,-.02,x1+.14,1.9,.04,39);q4([x0+.12,0,-.03],[x1-.12,0,-.03],[x1-.12,1.5,-.03],[x0+.12,1.5,-.03],[0,0,1],[0,0],[1,0],[1,1],[0,1],22,201);
-    box(3.5,1.12,.03,3.7,1.42,.18,28,null,266);LAMPS.push([3.6,1.27,.25,0]);})();
+    box(3.5,1.12,.03,3.7,1.42,.18,28,null,266);LAMPS.push([3.6,1.27,.25,0]);
+    /* 左寄りに九重坂への石段：赤い柱と提灯、奥は上る段 */
+    var k0=.47,k1=1.33;box(k0,0,-.02,k0+.08,1.5,.08,36);box(k1-.08,0,-.02,k1,1.5,.08,36);box(k0-.1,1.42,-.03,k1+.1,1.5,.09,36);
+    for(var si=0;si<5;si++)box(k0+.08,si*.12,-.04-si*.2,k1-.08,si*.12+.12,-.24-si*.2+.2,29);
+    [k0+.18,k1-.18].forEach(function(lx){box(lx-.06,1.05,.04,lx+.06,1.28,.16,28,null,205);});LAMPS.push([.9,1.2,.25,0]);})();
   var townN=V.length/10;
   var vaoT=gl.createVertexArray();gl.bindVertexArray(vaoT);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
   [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
@@ -1136,6 +1217,77 @@ function init3d(){
     for(i=0;i<3;i++){box(.6,0,25.1+i*.6,1.3,.25+.08*(i%2),25.5+i*.6,35);box(JW-1.3,0,25.1+i*.6,JW-.6,.25+.08*((i+1)%2),25.5+i*.6,35);}
   })();
   var jokaN=V.length/10;
+  /* ---- 九重坂の形。地面は段々（奥ほど高い）。歩けないマスは建物で、九龍のほうは高く暗く、九份のほうは低く木と瓦。
+     路地の上に提灯の列、電線、張り出した部屋。看板が光る ---- */
+  var KLAMPS=[],KDECOR=[],kuN=0,vaoK=null;
+  (function(){V=[];var m=km(),W=m.W,H=m.H,C=CELL,x,y,k,i,rnd=m.rnd;
+    var KR=[201,203,205,207,209,211,213,215],NEON=[240,241,242,243,244,245,246,247,256,262];
+    function G(x,y){return kGnd(x,y);}
+    function solid(x,y){return x<0||y<0||x>=W||y>=H?true:!m.walk[y*W+x];}
+    function T(x,y){return x<0||y<0||x>=W||y>=H?G(Math.max(0,Math.min(W-1,x)),Math.max(0,Math.min(H-1,y)))+3:m.walk[y*W+x]?G(x,y):m.top[y*W+x];}
+    for(y=0;y<H;y++)for(x=0;x<W;x++){var x0=x*C,x1=x0+C,z0=y*C,z1=z0+C,g=G(x,y),kk=y*W+x,kz=m.zone[kk];
+      if(m.walk[kk]){
+        /* 地面：九龍は濡れた石、九份は石段 */
+        q4([x0,g,z0],[x1,g,z0],[x1,g,z1],[x0,g,z1],[0,1,0],[0,0],[0,0],[0,0],[0,0],20);
+        /* 段の立ち上がり（隣が低いとき） */
+        [[0,1],[0,-1],[1,0],[-1,0]].forEach(function(d){var nx=x+d[0],ny=y+d[1];if(solid(nx,ny))return;var gn=G(nx,ny);if(gn>=g-.001)return;
+          var A,B;if(d[1]===1){A=[x0,0,z1];B=[x1,0,z1];}else if(d[1]===-1){A=[x1,0,z0];B=[x0,0,z0];}else if(d[0]===1){A=[x1,0,z1];B=[x1,0,z0];}else{A=[x0,0,z0];B=[x0,0,z1];}
+          q4([A[0],gn,A[2]],[B[0],gn,B[2]],[B[0],g,B[2]],[A[0],g,A[2]],[d[0],0,d[1]],[0,0],[0,0],[0,0],[0,0],29);});
+        /* 稲荷の鳥居のトンネル */
+        if(m.feat[kk]&2){box(x0+.02,g,z0+.18,x0+.07,g+1.5,z0+.25,36);box(x1-.07,g,z0+.18,x1-.02,g+1.5,z0+.25,36);box(x0-.04,g+1.42,z0+.16,x1+.04,g+1.5,z0+.27,36);box(x0-.06,g+1.5,z0+.15,x1+.06,g+1.55,z0+.28,24);}
+        /* 頭の上：提灯（九份の坂）、電線と張り出した部屋（九龍） */
+        var ns=solid(x-1,y)&&solid(x+1,y),ew=solid(x,y-1)&&solid(x,y+1);
+        if(!kz&&(m.feat[kk]&1)&&y%2===0){for(i=0;i<2;i++){var lx=x0+.12+i*.22,ly=g+2.25+.05*i;box(lx-.05,ly-.13,z0+.17,lx+.05,ly,z0+.27,28,null,KR[(x+y+i)%8]);}KLAMPS.push([x0+C/2,g+2.1,z0+C/2,.9]);}
+        else if(!kz&&rnd()<.18){var lx2=x0+C/2;box(lx2-.06,g+2.2,z0+.17,lx2+.06,g+2.38,z0+.29,28,null,KR[(x*3+y)%8]);KLAMPS.push([lx2,g+2.1,z0+C/2,.6]);}
+        if(kz&&(ns||ew)&&rnd()<.22){var hb=g+3.0+rnd()*1.2;if(ns)box(x0-.02,hb,z0+.05,x1+.02,hb+.5,z1-.05,21,null,rnd()<.4?208:8);else box(x0+.05,hb,z0-.02,x1-.05,hb+.5,z1+.02,21,null,rnd()<.4?208:8);}
+        if(rnd()<.35){var wy=g+2.6+rnd()*.9;if(ns)q4([x0,wy,z0+.2],[x1,wy+.06,z0+.2],[x1,wy+.075,z0+.215],[x0,wy+.015,z0+.215],[0,1,0],[0,0],[0,0],[0,0],[0,0],25);
+          else q4([x0+.2,wy,z0],[x0+.2,wy+.06,z1],[x0+.215,wy+.075,z1],[x0+.215,wy+.015,z0],[0,1,0],[0,0],[0,0],[0,0],[0,0],25);}
+        if(kz&&rnd()<.12){var nc=[[1,.35,.75],[.3,.9,1],[1,.85,.3],[.45,1,.55]][Math.floor(rnd()*4)];KLAMPS.push([x0+C/2,g+1.6,z0+C/2,.7,nc]);}
+        continue;}
+      /* 建物：段のいちばん低い所から上まで */
+      var tp=m.top[kk],bot=Math.min(g,G(x,Math.min(H-1,y+1)))-.6;
+      if(m.feat[kk]&4){box(x0,bot,z0,x0+.08,tp,z1,25);box(x0,tp,z0,x0+.12,tp+.05,z1,36);continue;}
+      box(x0,bot,z0,x1,tp,z1,kz?(rnd()<.5?21:26):21,"Y",kz?8:200+((x*7+y)%9));
+      /* 屋根：九份は瓦のふた、九龍は平らで水の箱やアンテナ */
+      if(!kz){box(x0-.06,tp,z0-.06,x1+.06,tp+.08,z1+.06,24);}else{box(x0,tp,z0,x1,tp+.04,z1,26);if(rnd()<.2)box(x0+.08,tp+.04,z0+.08,x0+.3,tp+.3,z0+.3,25);if(rnd()<.15)box(x0+.2,tp,z0+.2,x0+.23,tp+.9,z0+.23,25);}
+      /* 路地に面した壁：窓、看板、店先、室外機 */
+      [[0,1],[0,-1],[1,0],[-1,0]].forEach(function(d){if(solid(x+d[0],y+d[1]))return;var gN=G(x+d[0],y+d[1]),ex=.003;
+        function face(u0,y0,u1,y1,mt,sd,off){var o=(off||0)+ex,P1,P2;
+          if(d[1]===1){P1=[x0+u0*C,0,z1+o];P2=[x0+u1*C,0,z1+o];}else if(d[1]===-1){P1=[x1-u0*C,0,z0-o];P2=[x1-u1*C,0,z0-o];}
+          else if(d[0]===1){P1=[x1+o,0,z1-u0*C];P2=[x1+o,0,z1-u1*C];}else{P1=[x0-o,0,z0+u0*C];P2=[x0-o,0,z0+u1*C];}
+          q4([P1[0],y0,P1[2]],[P2[0],y0,P2[2]],[P2[0],y1,P2[2]],[P1[0],y1,P1[2]],[d[0],0,d[1]],[0,0],[1,0],[1,1],[0,1],mt,sd);}
+        /* 1階：九份は灯る店先と暖簾、九龍は暗い戸口かシャッター */
+        if(!kz){if(rnd()<.7){face(.08,gN+.08,.92,gN+.6,40,200+((x*3+y)%40));if(rnd()<.35)face(.1,gN+.5,.9,gN+.7,37,270+((x+y)%7),.05);}else face(.2,gN,.8,gN+.6,25,0);}
+        else if(rnd()<.4)face(.15,gN,.85,gN+.6,rnd()<.5?40:23,rnd()<.5?200+((x+y*7)%40):5);
+        /* 上の階の窓 */
+        for(var fl=gN+.9;fl<tp-.3;fl+=.75){if(rnd()<(kz?.55:.45)){var on=rnd()<.38,wu=.3+rnd()*.1;face(wu,fl,wu+.38,fl+.3,40,on?200+((x*13+y*7+Math.round(fl*3))%60):40+((x+y)%40));}
+          if(kz&&rnd()<.12){/* 室外機 */var u=.3+rnd()*.4;face(u-.12,fl-.12,u+.12,fl+.02,26,0,.12);}}
+        /* 看板：九龍は縦の光る看板、九份は赤い提灯の吊り看板 */
+        if(rnd()<(kz?.35:.18)){var sy=gN+1.1+rnd()*(kz?2.2:.6);face(.35,sy,.65,sy+(kz?.9:.5),38,NEON[Math.floor(rnd()*NEON.length)],.16);
+          var cc=[x0+C/2+d[0]*(C/2+.2),sy+.3,z0+C/2+d[1]*(C/2+.2)];KLAMPS.push([cc[0],cc[1],cc[2],.5,kz?[[1,.35,.75],[.3,.9,1],[1,.85,.3],[.45,1,.55]][Math.floor(rnd()*4)]:null]);}
+        if(!kz&&rnd()<.25){var c2=[x0+C/2+d[0]*(C/2+.14),0,z0+C/2+d[1]*(C/2+.14)],ly3=gN+1.15;box(c2[0]-.07,ly3,c2[2]-.07,c2[0]+.07,ly3+.2,c2[2]+.07,28,null,KR[(x*5+y)%8]);KLAMPS.push([c2[0],ly3+.1,c2[2],.7]);}
+      });}
+    /* 外：まわりの山と空。東（右）は海へ下る */
+    var sky=[[-30,-6,-30],[W*C+30,-6,-30],[W*C+30,26,-30],[-30,26,-30]];
+    q4([-30,-6,-30],[W*C+30,-6,-30],[W*C+30,26,-30],[-30,26,-30],[0,0,1],[0,0],[0,0],[0,0],[0,0],31);
+    q4([-30,-6,H*C+30],[W*C+30,-6,H*C+30],[W*C+30,26,H*C+30],[-30,26,H*C+30],[0,0,-1],[0,0],[0,0],[0,0],[0,0],31);
+    q4([-30,-6,-30],[-30,-6,H*C+30],[-30,26,H*C+30],[-30,26,-30],[1,0,0],[0,0],[0,0],[0,0],[0,0],31);
+    q4([W*C+30,-6,-30],[W*C+30,-6,H*C+30],[W*C+30,26,H*C+30],[W*C+30,26,-30],[-1,0,0],[0,0],[0,0],[0,0],[0,0],31);
+    q4([W*C,-3,-30],[W*C+30,-3,-30],[W*C+30,-3,H*C+30],[W*C,-3,H*C+30],[0,1,0],[0,0],[0,0],[0,0],[0,0],30);
+    /* 入口：赤い柱と「九重坂」の光る額 */
+    var ex0=(W/2-3)*C,ex1=(W/2+3)*C,ez=H*C-.15;box(ex0,0,ez-.15,ex0+.2,2.6,ez,36);box(ex1-.2,0,ez-.15,ex1,2.6,ez,36);box(ex0-.2,2.5,ez-.2,ex1+.2,2.7,ez+.05,36);
+    q4([(ex0+ex1)/2-.7,2.05,ez+.01],[(ex0+ex1)/2+.7,2.05,ez+.01],[(ex0+ex1)/2+.7,2.45,ez+.01],[(ex0+ex1)/2-.7,2.45,ez+.01],[0,0,1],[0,0],[1,0],[1,1],[0,1],38,256);
+    KLAMPS.push([(ex0+ex1)/2,2.2,ez+.3,1]);
+    /* 茶屋：広場の上（北）に、提灯をたくさん下げた4階建て */
+    var tx0=21*C,tx1=31*C,tz1=6*C,tg=kGnd(26,6);
+    for(i=0;i<4;i++){var yb=tg+i*.8;box(tx0+.1*i,yb,tz1-1.2,tx1-.1*i,yb+.7,tz1-.02,21,null,209);
+      q4([tx0+.1*i+.1,yb+.12,tz1+.001],[tx1-.1*i-.1,yb+.12,tz1+.001],[tx1-.1*i-.1,yb+.55,tz1+.001],[tx0+.1*i+.1,yb+.55,tz1+.001],[0,0,1],[0,0],[1,0],[1,1],[0,1],40,203+i*2);
+      box(tx0+.1*i-.15,yb+.7,tz1-1.3,tx1-.1*i+.15,yb+.78,tz1+.25,24);
+      for(k=0;k<12;k++){var lx4=tx0+.3+k*(tx1-tx0-.6)/11;box(lx4-.05,yb+.5,tz1+.12,lx4+.05,yb+.66,tz1+.22,28,null,KR[(k+i)%8]);}
+      KLAMPS.push([(tx0+tx1)/2,yb+.5,tz1+.5,1.1]);}
+    kuN=V.length/10;vaoK=gl.createVertexArray();gl.bindVertexArray(vaoK);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
+    [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
+  })();
   var vaoJ=gl.createVertexArray();gl.bindVertexArray(vaoJ);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
   [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
   V=[];
@@ -1204,6 +1356,17 @@ function init3d(){
       var f=1.05,hw=1.45,el=.5,tz=.9,d=hw/(Math.tan(f/2)*a),px=(me.fx+.5)*CELL,cx=Math.max(hw-.55,Math.min(RW-hw+.55,px));
       if(hw*2>=RW)cx=RW/2;setCam([cx,.3+d*Math.sin(el),tz+d*Math.cos(el)],[cx,.3,tz],f);return;}if(tall)setCam([RW/2,2.45,1.25+4.0],[RW/2,.35,1.2],fovFor(.68,.5));else setCam([RW/2,1.85,1.25+4.45],[RW/2,.62,1.25],.68);}
   /* 街：両岸の通りと家の表が横に収まる距離を、画面の形から出す。縦長の携帯ほど高く遠くから見下ろす。自分の岸へ少し寄る */
+  /* 九重坂：自分の後ろ斜め上からついて回る。向きを変えるとゆっくり回り込む。後ろに壁があれば近づく */
+  var kYaw=null,kT=0,kRight=[1,0,0];
+  function kujuCam(now){var px=(me.fx+.5)*CELL,pz=(me.fy+.5)*CELL,gy=kGnd(Math.round(me.fx),Math.round(me.fy))+(me.jz||0)*S3*.3,a=W/H;
+    var ang=Math.atan2(me.dir[0],-me.dir[1]);if(kYaw===null)kYaw=ang;var dt=Math.min(.1,Math.max(.001,(now-(kT||now))/1000));kT=now;
+    var dd=ang-kYaw;while(dd>Math.PI)dd-=2*Math.PI;while(dd<-Math.PI)dd+=2*Math.PI;kYaw+=dd*Math.min(1,dt*(reduce?30:3.5));
+    var fx2=Math.sin(kYaw),fz2=-Math.cos(kYaw),D=a<.8?2.3:2.0,HH=a<.8?1.25:1.05,mm=km();
+    function hitAt(qx,qz){var cx=Math.floor(qx/CELL),cz=Math.floor(qz/CELL);if(cx<0||cz<0||cx>=mm.W||cz>=mm.H)return false;return !mm.walk[cz*mm.W+cx]&&mm.top[cz*mm.W+cx]>gy+.4;}
+    for(var sd=.3;sd<=D;sd+=.06){var qx=px-fx2*sd,qz=pz-fz2*sd;
+      if(hitAt(qx,qz)||hitAt(qx+.24,qz)||hitAt(qx-.24,qz)||hitAt(qx,qz+.24)||hitAt(qx,qz-.24)){D=Math.max(.45,sd-.1);break;}}
+    var h=gy+HH*(.6+.4*Math.min(1,D/2.0));setCam([px-fx2*D,h,pz-fz2*D],[px+fx2*1.8,gy+.62,pz+fz2*1.8],a<.8?1.2:1.05);
+    kRight=[Math.cos(kYaw),0,Math.sin(kYaw)];return pz;}
   /* 城下町：通りの幅が収まる距離から、少し低めに見る（天守が奥に見えるように） */
   function jokaCam(){var fz=Math.max(1.8,Math.min(JL-1.0,(me.fy+.5)*CELL)),a=W/H,px=(me.fx+.5)*CELL;
     if(a<.8){var tf=1.1,th=1.9,te=.30,ta=1.6,td=th/(Math.tan(tf/2)*a),tx=Math.max(1.9,Math.min(JW-1.9,px));
@@ -1230,13 +1393,14 @@ function init3d(){
     /* 部屋の中で物の上に乗ったもの（ちゃぶ台の湯のみ、座布団に座った人、家具に乗った人や猫）は、
        下の家具の紙に隠れないよう少し手前に置く。高く乗ったものほど手前にして、重なった紙同士がちらつかないようにする。
        街（橋の上など）は今までどおり少し奥に置く */
-    stand:function(key,px,X,Z,lift){var up=Math.max(lift,0),dz=outside()?-Math.min(up,8)*.012:up>0?.01+Math.min(up,60)*.0015:0;
+    stand:function(key,px,X,Z,lift){var up=Math.max(lift,0),dz=where==="kuju"?0:outside()?-Math.min(up,8)*.012:up>0?.01+Math.min(up,60)*.0015:0;
       list.push({k:key,px:px,x:X*CELL,z:Z*CELL+dz,y:lift*S3,ft:footRows(key,px)});},
-    blob:function(X,Z){blobs.push([X*CELL,Z*CELL]);},
+    blob:function(X,Z){blobs.push([X*CELL,Z*CELL,where==="kuju"?kGnd(Math.round(X-.5),Math.round(Z-.82)):0]);},
     /* 触った所から床をたどって、どのマスか。部屋の外なら壁の短冊を触ったかを返す */
     pick:function(px,py){var nx=px/W*2-1,ny=1-py/H*2,t=Math.tan(FOV/2),d=norm([-fz[0]+nx*t*W/H*fx[0]+ny*t*fy[0],-fz[1]+nx*t*W/H*fx[1]+ny*t*fy[1],-fz[2]+nx*t*W/H*fx[2]+ny*t*fy[2]]);
       var GW=gw()*CELL,GD=gh()*CELL;
-      if(d[1]<0){var k=-camP[1]/d[1],x=camP[0]+d[0]*k,z=camP[2]+d[2]*k;if(x>=0&&x<GW&&z>=0&&z<GD)return {cell:[Math.floor(x/CELL),Math.floor(z/CELL)]};}
+      var gy0=where==="kuju"?kGnd(me.x,me.y):0;
+      if(d[1]<0){var k=(gy0-camP[1])/d[1],x=camP[0]+d[0]*k,z=camP[2]+d[2]*k;if(x>=0&&x<GW&&z>=0&&z<GD)return {cell:[Math.floor(x/CELL),Math.floor(z/CELL)]};}
       if(!outside()&&d[2]<0){var k2=-camP[2]/d[2],wx=camP[0]+d[0]*k2,wy=camP[1]+d[1]*k2;if(wx>=SX0&&wx<=SX1&&wy>=SY0&&wy<=SY1)return {wall:true};}
       return null;},
     render:function(now,marker){
@@ -1251,10 +1415,10 @@ function init3d(){
       var usePost=!!(FX&&FX.post&&fxSize(cv.width,cv.height));
       /* 街：日と月の影の深さを、ときどき描き直す（家が動かないので毎回は要らない） */
       var LVP=null;
-      var jk=where==="joka",PW=jk?JW:RX,PLN=jk?JL:TL,pvao=jk?vaoJ:vaoT,pN=jk?jokaN:townN;
+      var kj=where==="kuju",jk=where==="joka",PW=kj?(me.fx+.5)*CELL*2:jk?JW:RX,PLN=kj?KH*CELL:jk?JL:TL,pvao=kj?vaoK:jk?vaoJ:vaoT,pN=kj?kuN:jk?jokaN:townN;
       if(FX&&FX.shadow&&outside()){var fzS=Math.max(1.2,Math.min(PLN-1,(me.fy+.5)*CELL)),ctr=[PW/2,0,fzS-1.5],ld=norm([-.3,.8,.5]);
         LVP=mul(ortho(-7,7,-7,7,.1,40),lookM([ctr[0]+ld[0]*15,ctr[1]+ld[1]*15,ctr[2]+ld[2]*15],ctr));
-        if(Math.abs(fzS-FX.lastFz)>.6||FX.frame++%60===0){FX.lastFz=fzS;gl.bindFramebuffer(gl.FRAMEBUFFER,FX.shF);gl.viewport(0,0,1024,1024);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
+        var fkey=fzS+(kj?(me.fx|0)*100:0);if(Math.abs(fkey-FX.lastFz)>.6||FX.frame++%60===0){FX.lastFz=fkey;gl.bindFramebuffer(gl.FRAMEBUFFER,FX.shF);gl.viewport(0,0,1024,1024);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
           gl.useProgram(FX.sh.p);gl.uniformMatrix4fv(FX.sh.u.uLVP,false,LVP);gl.bindVertexArray(pvao);gl.drawArrays(gl.TRIANGLES,0,pN);FX.lvp=LVP;}
         LVP=FX.lvp;}
       gl.bindFramebuffer(gl.FRAMEBUFFER,usePost?(FX.msF||FX.scene.f):null);
@@ -1263,24 +1427,34 @@ function init3d(){
       var SZ=34*S3,lampOf,glowOne=null,shadowA,town=outside();
       if(town){
         var fz,homes=[],cand;
-        if(jk){fz=jokaCam();for(i=0;i<HOUSES;i++)homes.push(0);
+        if(kj){fz=kujuCam(now);for(i=0;i<HOUSES;i++)homes.push(0);var kpx=(me.fx+.5)*CELL,kpz=(me.fy+.5)*CELL;
+          /* 九重坂：近い明かりから6つ。九龍の看板は色つき */
+          cand=KLAMPS.map(function(L,k){var f=reduce?1:(.88+.1*Math.sin(now*.007+k*1.9));f*=(.4+.6*(1-.85*td.day))*L[3];var c=L[4]||[.85,.42,.18];return {p:[L[0],L[1],L[2]],c:[c[0]*f*.9,c[1]*f*.9,c[2]*f*.9],d:Math.hypot(L[0]-kpx,L[2]-kpz)+(L[1]-kGnd(me.x,me.y)>3?2:0)};});
+          cand.sort(function(a,b){return a.d-b.d;});}
+        else if(jk){fz=jokaCam();for(i=0;i<HOUSES;i++)homes.push(0);
           /* 城下町：提灯がいつも灯る。明るめ */
           cand=JLAMPS.map(function(L,k){var f=reduce?1:(.9+.08*Math.sin(now*.006+k*1.3));f*=(.35+.65*(1-.85*td.day))*L[3];return {p:[L[0],L[1],L[2]],c:[.85*f,.42*f,.18*f]};});}
         else{fz=townCam();var hs=houses(),key=hs.map(function(id){return id+":"+nameOf(id);}).join("|");if(key!==plKey){plKey=key;drawPlates(hs);}
         for(i=0;i<HOUSES;i++)homes.push(homeLit(i)?1:0);
         cand=LAMPS.map(function(L,k){var f=reduce?1:(.94+.06*Math.sin(now*.005+k));f*=dim;return {p:[L[0],L[1],L[2]],c:[.55*f,.38*f,.18*f]};});
         HLANT.forEach(function(L,k){if(!homes[L[3]])return;var f=reduce?1:(.9+.07*Math.sin(now*.006+k*1.7)+.03*Math.sin(now*.021+k));f*=dim;cand.push({p:[L[0],L[1],L[2]],c:[.75*f,.34*f,.12*f]});});}
-        cand.sort(function(a,b){return Math.abs(a.p[2]-fz+.8)-Math.abs(b.p[2]-fz+.8);});
+        if(!kj)cand.sort(function(a,b){return Math.abs(a.p[2]-fz+.8)-Math.abs(b.p[2]-fz+.8);});
         var near=cand.slice(0,6);while(near.length<6)near.push({p:[0,-60,0],c:[0,0,0]});
         var Lp=[],Lc=[];near.forEach(function(L){Lp.push(L.p[0],L.p[1],L.p[2]);Lc.push(L.c[0],L.c[1],L.c[2]);});
         gl.useProgram(PT.p);base(PT,near[0].p,near[0].c);gl.uniform3fv(PT.u["uL[0]"],Lp);gl.uniform3fv(PT.u["uLc[0]"],Lc);gl.uniform1fv(PT.u["uHome[0]"],homes);gl.uniform1f(PT.u.uMoonX,PW/2+1.6);
         gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,LVP?FX.shT:null);gl.uniform1i(PT.u.uShadow,1);gl.uniform1f(PT.u.uShOn,LVP?1:0);if(LVP)gl.uniformMatrix4fv(PT.u.uLVP,false,LVP);
         gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,plT);gl.uniform1i(PT.u.uPlates,0);
         gl.bindVertexArray(pvao);gl.drawArrays(gl.TRIANGLES,0,pN);
-        (jk?JDECOR:DECOR).forEach(function(d){list.push(d);});
+        (kj?KDECOR:jk?JDECOR:DECOR).forEach(function(d){list.push(d);});
+        /* 九重坂の人たちと狐 */
+        if(kj){var nn=performance.now();kNpcs().forEach(function(n){if(!kNpcOn(n))return;var q=kNpcAt(n,nn),lf=stackTop(Math.round(q.fy)*KW+Math.round(q.fx));
+          list.push({k:n.key,px:n.px,x:(q.fx+.5)*CELL,z:(q.fy+.82)*CELL,y:lf*S3,ft:footRows("__pet",n.px)});blobs.push([(q.fx+.5)*CELL,(q.fy+.82)*CELL,lf*S3]);});
+          /* 天気雨（雨で昼）の日は、狐の嫁入りの行列が老街を下りてくる */
+          if(td.w.rain>.3&&td.day>.35){var tt=(Date.now()/900)%(KH+12);for(var fi=0;fi<6;fi++){var fyy=tt-fi*1.4-6;if(fyy<1||fyy>KH-2)continue;var yy=Math.floor(fyy),xx=Math.round(KW/2-1+4*Math.sin(yy*.21)+2*Math.sin(yy*.57))+(fi%2);
+            list.push({k:"__npcyome",px:NPCPX.kitsunemen,x:(xx+.5)*CELL,z:(fyy+.82)*CELL,y:kGnd(xx,yy)/SPX*S3,ft:footRows("__pet",NPCPX.kitsunemen)});}}}
         /* 切り絵は、いちばん近い明かりで照らし、その影を落とす */
         lampOf=function(s0){var b=near[0],bd=1e9;near.forEach(function(L){var dx=L.p[0]-s0.x,dz=L.p[2]-s0.z,dd=dx*dx+dz*dz;if(dd<bd){bd=dd;b=L;}});return b;};
-        gl.useProgram(PS.p);base(PS,near[0].p,near[0].c);gl.uniform1f(PS.u.uIn,0);gl.uniform3f(PS.u.uFill,.03+td.ambS[0]*.6+td.sun[0]*.10,.04+td.ambS[1]*.6+td.sun[1]*.10,.08+td.ambS[2]*.6+td.sun[2]*.10);gl.uniform1f(PS.u.uFog,.035-.022*td.day+.022*td.mist);shadowA=.40;
+        gl.useProgram(PS.p);base(PS,near[0].p,near[0].c);gl.uniform1f(PS.u.uIn,0);gl.uniform3f(PS.u.uFill,.03+td.ambS[0]*.6+td.sun[0]*.10,.04+td.ambS[1]*.6+td.sun[1]*.10,.08+td.ambS[2]*.6+td.sun[2]*.10);gl.uniform1f(PS.u.uFog,.035-.022*td.day+.022*td.mist);shadowA=kj?0:.40;
       }else{
         roomCam();
         var wt=wallText();if(wt!==scText){scText=wt;drawScroll(wt);}
@@ -1292,7 +1466,7 @@ function init3d(){
         gl.bindVertexArray(vaoR);gl.drawArrays(gl.TRIANGLES,0,roomN);
         lampOf=null;gl.useProgram(PS.p);base(PS,lamp,lc);gl.uniform1f(PS.u.uIn,1);gl.uniform3f(PS.u.uFill,0,0,0);gl.uniform1f(PS.u.uFog,0);shadowA=glowOne?.62:0;
       }
-      gl.uniform1i(PS.u.uTex,0);gl.uniform1f(PS.u.uShadow,shadowA);gl.bindVertexArray(vaoS);
+      gl.uniform1i(PS.u.uTex,0);gl.uniform1f(PS.u.uShadow,shadowA);gl.bindVertexArray(vaoS);gl.uniform3fv(PS.u.uRight,kj?kRight:[1,0,0]);
       gl.uniform1f(PS.u.uT,reduce?0:now/1000);
       function one(s0,mode){var sc=s0.sc||1;gl.uniform1f(PS.u.uSway,reduce?0:s0.k==="__yanagi"?.09:s0.k==="__sakura"?.035:0);if(lampOf){var LL=lampOf(s0);gl.uniform3fv(PS.u.uLamp,LL.p);gl.uniform3fv(PS.u.uLampCol,LL.c);}
         gl.bindTexture(gl.TEXTURE_2D,spriteTex(s0.k,s0.px));gl.uniform3f(PS.u.uO,s0.x,s0.y-(s0.ft==null?5:s0.ft)*S3*sc,s0.z);gl.uniform2f(PS.u.uSz,SZ*sc,SZ*sc);gl.uniform1i(PS.u.uMode,mode);
@@ -1300,9 +1474,9 @@ function init3d(){
       list.forEach(function(s0){one(s0,0);});
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-4);
       gl.uniform1f(PS.u.uGlow,0);
-      blobs.forEach(function(b){gl.uniform3f(PS.u.uO,b[0],0,b[1]);gl.uniform2f(PS.u.uSz,SZ,SZ);gl.uniform1i(PS.u.uMode,2);gl.drawArrays(gl.TRIANGLES,0,6);});
+      blobs.forEach(function(b){gl.uniform3f(PS.u.uO,b[0],b[2]||0,b[1]);gl.uniform2f(PS.u.uSz,SZ,SZ);gl.uniform1i(PS.u.uMode,2);gl.drawArrays(gl.TRIANGLES,0,6);});
       if(shadowA>0)list.forEach(function(s0){if(s0!==glowOne)one(s0,1);});
-      if(marker){gl.uniform3f(PS.u.uO,(marker[0]+.5)*CELL,0,(marker[1]+.5)*CELL);gl.uniform2f(PS.u.uSz,CELL*.86,CELL*.86);gl.uniform1i(PS.u.uMode,3);gl.drawArrays(gl.TRIANGLES,0,6);}
+      if(marker){gl.uniform3f(PS.u.uO,(marker[0]+.5)*CELL,kj&&kWalk(marker[0],marker[1])?kGnd(marker[0],marker[1]):0,(marker[1]+.5)*CELL);gl.uniform2f(PS.u.uSz,CELL*.86,CELL*.86);gl.uniform1i(PS.u.uMode,3);gl.drawArrays(gl.TRIANGLES,0,6);}
       gl.disable(gl.POLYGON_OFFSET_FILL);
       /* 花びら（いつも）と蛍（夕方から夜、川のそば） */
       if(FX&&outside()&&!reduce){var fzP=Math.max(1.2,Math.min(PLN-1,(me.fy+.5)*CELL));gl.useProgram(FX.part.p);gl.bindVertexArray(FX.vaoE);
@@ -1322,7 +1496,8 @@ function init3d(){
         gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(FX.comp.p);
         gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,FX.scene.t);gl.uniform1i(FX.comp.u.uScene,0);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,FX.b.t);gl.uniform1i(FX.comp.u.uBlur,1);
         var fc=clip([(me.fx+.5)*CELL,.3,(me.fy+.82)*CELL]),fy0=fc[2]>0?fc[1]/fc[2]*.5+.5:.5,isT=outside();
-        gl.uniform1f(FX.comp.u.uFocus,Math.max(.15,Math.min(.85,fy0)));gl.uniform1f(FX.comp.u.uBand,isT?.2:.34);gl.uniform1f(FX.comp.u.uAmt,isT?.7:.35);gl.uniform1f(FX.comp.u.uBloom,.06+.34*(1-td.day));
+        gl.uniform1f(FX.comp.u.uFocus,Math.max(.15,Math.min(.85,fy0)));var isK=where==="kuju";/* 九重坂は、ジオラマのぼかしを弱く（人の目の高さなので） */
+        gl.uniform1f(FX.comp.u.uBand,isK?.5:isT?.2:.34);gl.uniform1f(FX.comp.u.uAmt,isK?.18:isT?.7:.35);gl.uniform1f(FX.comp.u.uBloom,isK?.04+.2*(1-td.day):.06+.34*(1-td.day));
         gl.drawArrays(gl.TRIANGLES,0,3);gl.activeTexture(gl.TEXTURE0);gl.enable(gl.DEPTH_TEST);}
     },
     /* 重い端末では、ぼかし・にじみ・影を切る */
@@ -1400,6 +1575,7 @@ function step(dx,dy){
   var turned=me.dir[0]!==dx||me.dir[1]!==dy;me.dir=[dx,dy];if(turned)liveMe(me.x,me.y);
   var tx=me.x+dx,ty=me.y+dy;
   if(where==="joka"&&!jWalk(tx,ty)){drawRoom();setStatus(jSay(tx,ty));return;}
+  if(where==="kuju"&&!kWalk(tx,ty)){drawRoom();setStatus(ty>=KH?"九重坂の入口。橙のボタンで川沿いの町へ戻れる。":"壁。路地は、ほかの向きに続いている。");return;}
   if(tx<0||tx>=gw()||ty<0||ty>=gh()){drawRoom();if(where==="town"){if(doorAhead()<0)setStatus(ty<0||(ty<PL&&(tx<0||tx>=TCOLS))?"広場の塀。":tx<0||tx>=TCOLS?"家の壁。戸の前で横を向くと入れる。":"通りの端。");}else if(actTarget()==="jump")setStatus("そっちは壁。");return;}
   if(where==="town"&&!walkable(tx,ty)){drawRoom();setStatus(ty<PL?(ty===0?"桜の木。":"井戸。"):"川がある。橋を渡る。");return;}
   var tst=outside()?[]:room[ty*COLS+tx];
@@ -1426,7 +1602,7 @@ function walkTo(tx,ty){
   if(me.moving||me.jumping)return;
   if(tx===me.x&&ty===me.y){act();return;}
   if(me.sit){me.sit=null;liveMe(me.x,me.y);}me.hop=false;
-  if(!walkable(tx,ty)){if(where==="joka"){setStatus(jSay(tx,ty));return;}if(where==="town"){setStatus(ty<PL?"そこには立てない。":"川がある。橋を渡る。");return;}setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
+  if(!walkable(tx,ty)){if(where==="kuju"){setStatus("そこには行けない。");return;}if(where==="joka"){setStatus(jSay(tx,ty));return;}if(where==="town"){setStatus(ty<PL?"そこには立てない。":"川がある。橋を渡る。");return;}setStatus("そこは家具があって立てない。矢印で隣まで行けば、低い家具には跳び乗れる。");return;}
   var p=route(tx,ty);if(!p){setStatus("家具にふさがれて、そこまで歩けない。");return;}
   if(reduce){me.x=me.fx=tx;me.y=me.fy=ty;drawRoom();liveMe(tx,ty);return;}
   me.dir=[p[0][0]-me.x,p[0][1]-me.y];liveMe(p[0][0],p[0][1]);
@@ -1452,7 +1628,7 @@ function holdGo(){
   if(!hold.dir)return;
   if(mode!=="room"||phase!=="in"){hold.dir=null;return;}
   if(me.moving||me.jumping)return; /* 歩き終えたところで tick から呼ばれる */
-  var x=me.x,y=me.y;step(hold.dir[0],hold.dir[1]);
+  var x=me.x,y=me.y,hd=kRemap(hold.dir);step(hd[0],hd[1]);
   /* 動きの少ない設定では一瞬で着くので、ここで間を置く。進めなかったときも少し待ってから試す */
   if(!me.moving)hold.t=setTimeout(holdGo,(me.x!==x||me.y!==y)?STEP:HOLDWAIT);
 }
@@ -1510,7 +1686,8 @@ var stT=0;
 function setStatus(t){statusEl.textContent=t;statusEl.classList.remove("fade");clearTimeout(stT);stT=setTimeout(function(){statusEl.classList.add("fade");},5000);}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
 function jSay(x,y){if(y>=JROWS)return "大門の外。橙のボタンで川沿いの町へ戻れる。";if(y>=22)return "店の前。通りを歩く。";if(y>=14)return x<=4?"神社。鳥居をくぐって、拝殿の前へ。":"五重塔。";if(y>=8)return "堀がある。赤い橋を渡る。";return "天守の石垣。";}
-function hint(){if(where==="joka"){setStatus("城下町。提灯の通りの先に神社と五重塔、堀の向こうに天守。神社でお参りとおみくじ、堀で釣りができる。");return;}
+function hint(){if(where==="kuju"){setStatus("九重坂。迷路の坂の街。矢印は画面から見た向き。上の茶屋、長い石段、奥の稲荷。夜は狐が出る。");return;}
+  if(where==="joka"){setStatus("城下町。提灯の通りの先に神社と五重塔、堀の向こうに天守。神社でお参りとおみくじ、堀で釣りができる。");return;}
   if(where==="town"){setStatus("川沿いの町。両岸に通りがあり、橋で渡れる。家の戸の方を向き、橙のボタンで入る。明かりのついた家には、誰かがいる。");return;}setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。右の壁の奥の戸から外に出られる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。右の壁の奥の戸から外に出られる。");}
 function front(){return [me.x+me.dir[0],me.y+me.dir[1]];}
 function inRoom(p){return p[0]>=0&&p[0]<gw()&&p[1]>=0&&p[1]<gh();}
@@ -1574,10 +1751,12 @@ function placePet(){
   pet.from=[pet.x,pet.y];pet.t0=0;
 }
 /* 橙のボタン：衣装台や壁の短冊に向いていれば、それを使う。ほかは跳ぶ */
-var ACTS={joka:"城下町へ",jout:"川沿いの町へ",pray:"お参りする",kuji:"おみくじ",fish:"釣る",reel:"上げる",jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
+var ACTS={kuju:"九重坂へ",kout:"川沿いの町へ",talk:"話しかける",joka:"城下町へ",jout:"川沿いの町へ",pray:"お参りする",kuji:"おみくじ",fish:"釣る",reel:"上げる",jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
 function actTarget(){
   if(me.sit)return "stand";
   var bf=front(),seat=seatAt(bf[0],bf[1])||seatAt(me.x,me.y);
+  if(where==="kuju"){if(kNpcFront())return "talk";if(me.y===KH-1&&me.dir[0]===0&&me.dir[1]===1)return "kout";return "jump";}
+  if(where==="town"&&me.y===0&&me.dir[0]===0&&me.dir[1]===-1&&(me.x===1||me.x===2))return "kuju";
   if(where==="joka"){if(fishing)return "reel";if(fishSpot())return "fish";
     if(me.y===JROWS-1&&me.dir[0]===0&&me.dir[1]===1)return "jout";
     if(me.y===17&&me.dir[0]===0&&me.dir[1]===-1&&(me.x===1||me.x===2))return "pray";
@@ -1658,6 +1837,9 @@ function syncAct(){
   else if(a==="homedoor")setStatus("自分の家の戸の前。橙のボタンで入る。");
   else if(a==="fish")setStatus(where==="joka"?"堀の前。橙のボタンで糸を垂らす。":"川の前。橙のボタンで糸を垂らす。");
   else if(a==="joka")setStatus("城下町への門。橙のボタンでくぐる。");
+  else if(a==="kuju")setStatus("九重坂への石段。橙のボタンで入る。");
+  else if(a==="kout")setStatus("九重坂の入口。橙のボタンで川沿いの町へ戻る。");
+  else if(a==="talk"){var nn=kNpcFront();if(nn)setStatus(nn.n+"がいる。橙のボタンで話しかける。");}
   else if(a==="jout")setStatus("大門の外へ。橙のボタンで川沿いの町へ戻る。");
   else if(a==="pray")setStatus("拝殿の前。橙のボタンでお参りする。");
   else if(a==="kuji")setStatus("おみくじ。橙のボタンで引く（何度でも）。");
@@ -1666,6 +1848,9 @@ function syncAct(){
 function act(){
   if(me.moving||me.jumping)return;
   var a=actTarget();
+  if(a==="kuju"){goKuju();return;}
+  if(a==="kout"){goTownFromKuju();return;}
+  if(a==="talk"){var tn=kNpcFront();if(tn)kTalk(tn);return;}
   if(a==="joka"){goJoka();return;}
   if(a==="jout"){goTownGate();return;}
   if(a==="pray"){pray();return;}
@@ -2088,6 +2273,19 @@ function goJoka(){
   liveJoin();el("visit-bar").hidden=false;el("visit-name").textContent="城下町にいる";
   show("room");setStatus("城下町に来た。提灯の通りの先に、神社と五重塔、その奥に天守。");
 }
+/* 九重坂へ：川沿いの町の広場の奥（左寄り）の石段から */
+function goKuju(){
+  if(phase!=="in"||me.moving||me.jumping||!R3)return;
+  where="kuju";me.x=me.fx=KW/2-1;me.y=me.fy=KH-2;me.dir=[0,-1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;me.sit=null;KQ=0;placePet();
+  liveJoin();el("visit-bar").hidden=false;el("visit-name").textContent="九重坂にいる";
+  show("room");setStatus("九重坂に来た。坂を上ると、路地が分かれていく。矢印は画面から見た向き。");
+}
+function goTownFromKuju(){
+  if(phase!=="in"||me.moving||me.jumping)return;
+  where="town";me.x=me.fx=me.x<KW/2?1:2;me.y=me.fy=1;me.dir=[0,1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;me.sit=null;placePet();
+  liveJoin();el("visit-bar").hidden=false;el("visit-name").textContent="川沿いの町にいる";
+  show("room");setStatus("川沿いの町に戻った。後ろが九重坂への石段。");
+}
 /* 城下町から川沿いの町へ：広場の奥の門の前に出る */
 function goTownGate(){
   if(phase!=="in"||me.moving||me.jumping)return;
@@ -2122,7 +2320,7 @@ function goOut(){
 var live={ch:null,topic:"",others:Object.create(null),raf:0,since:0,ok:false,hiT:0,joinT:0};
 /* 1つの部屋に入れるのは、主と客5人の合計6人まで（2026-11-16、はる） */
 var GUESTMAX=5,SAYMAX=30,SAYMS=6000;
-function liveOwner(){return where==="joka"?JOKA_ID:where==="town"?TOWN_ID:where==="mine"?uid:visitId;}
+function liveOwner(){return where==="kuju"?KUJU_ID:where==="joka"?JOKA_ID:where==="town"?TOWN_ID:where==="mine"?uid:visitId;}
 function okCell(x,y){return Number.isInteger(x)&&Number.isInteger(y)&&x>=0&&x<gw()&&y>=0&&y<gh();}
 function okDir(a,b){return (a===0||a===1||a===-1)&&(b===0||b===1||b===-1)&&(a===0)!==(b===0);}
 function liveJoin(){
@@ -2162,7 +2360,7 @@ function lobbyJoin(){
   try{Promise.resolve(sb.realtime&&sb.realtime.setAuth?sb.realtime.setAuth():null).then(go,go);}catch(e){go();}
 }
 /* 部屋を移ったときだけ出し直す（何度も出すと Supabase に切られる） */
-function lobbyTrack(){if(!lobby.ch||!lobby.ok)return;var at=where==="town"?"town":where==="joka"?"joka":String(liveOwner()||"");if(at===lobby.at)return;lobby.at=at;try{lobby.ch.track({at:at});}catch(e){}}
+function lobbyTrack(){if(!lobby.ch||!lobby.ok)return;var at=where==="town"?"town":where==="joka"?"joka":where==="kuju"?"kuju":String(liveOwner()||"");if(at===lobby.at)return;lobby.at=at;try{lobby.ch.track({at:at});}catch(e){}}
 function lobbyLeave(){var ch=lobby.ch;lobby.ch=null;lobby.ok=false;lobby.at=null;lobby.occ=Object.create(null);if(ch){try{sb.removeChannel(ch);}catch(e){}}}
 /* 今ログインしている住民：全員がつなぐ鍵付きの通り道 room:ONLINE_ID に、自分の id を名札にして1回だけ出す。
    どの部屋にいるかは出さない（家の明かりとは別の通り道） */
@@ -2352,6 +2550,8 @@ function nameTag(nm,X,Z,lift){
 var bubbles=[];
 function liveTags(){
   var now=performance.now();bubbles=[];
+  if(where==="kuju")kNpcs().forEach(function(n){if(!kNpcOn(n))return;var q=kNpcAt(n,now),lf=stackTop(Math.round(q.fy)*KW+Math.round(q.fx));
+    if(n.say&&n.say.until>now)bubble(n.say.t,q.fx+.5,q.fy+.82,44+lf);else if(kNpcFront()===n)nameTag(n.n,q.fx+.5,q.fy+.82,lf);});
   for(var id in live.others){var o=live.others[id],k=Math.min(1,(now-o.t0)/STEP);
     var fx=o.from[0]+(o.x-o.from[0])*k,fy=o.from[1]+(o.y-o.from[1])*k,jk=(now-o.jt)/380;
     var lift=stackTop(Math.round(fy)*gw()+Math.round(fx))+(jk<1?Math.round(Math.sin(Math.PI*jk)*12):0),tx=fx+0.5,tz=fy+0.82;
@@ -2728,7 +2928,7 @@ document.addEventListener("keydown",function(e){
   var m={ArrowLeft:[-1,0],ArrowUp:[0,-1],ArrowDown:[0,1],ArrowRight:[1,0]}[e.key];
   /* WASD は日本語入力や配列に左右されないよう e.code で見る。Cmd+W などは横取りしない */
   if(!m&&!e.ctrlKey&&!e.metaKey&&!e.altKey)m={KeyA:[-1,0],KeyW:[0,-1],KeyS:[0,1],KeyD:[1,0]}[e.code];
-  if(m){e.preventDefault();step(m[0],m[1]);}
+  if(m){e.preventDefault();m=kRemap(m);step(m[0],m[1]);}
   else if((e.key===" "||e.key==="Enter")&&t!=="BUTTON"&&t!=="A"){e.preventDefault();act();}
 });
 /* ---- 通知：新しい手紙と、自分の短冊への新しい返事の件数（2026-11-17、はる）
@@ -2937,7 +3137,7 @@ function playWanted(){if(!PLAY_ON)return false;var coarse=false;try{coarse=windo
 function syncPlay(){
   var on=playWanted(),b=document.body;b.classList.toggle("play",on);
   if(!on){b.classList.remove("menu","saying","strips");el("view-room").style.top="";el("view-room").style.height="";}
-  else{fitPlay();el("hud-place").textContent=where==="town"?"川沿いの町":where==="joka"?"城下町":where==="mine"?"自分の部屋":visitNm+"の部屋";}
+  else{fitPlay();el("hud-place").textContent=where==="town"?"川沿いの町":where==="joka"?"城下町":where==="kuju"?"九重坂":where==="mine"?"自分の部屋":visitNm+"の部屋";}
   b.classList.toggle("away",where!=="mine");el("hud-strips").hidden=where!=="res";el("hud-home").hidden=where==="mine";
   fitStage();
 }
