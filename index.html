@@ -566,6 +566,8 @@ function jArch(z){var t=(z-3.45)/3.0;return t<=0||t>=1?0:.28*Math.sin(Math.PI*t)
 /* ---- 九重坂（2026-11-18、はる）：九份（山の斜面の石段、赤い提灯、茶屋）と九龍城砦（迷路の路地、積み重なる建物、
    配管と電線、看板）を混ぜた迷宮。坂は奥ほど高い。地図は決まった乱数で作るので、誰が見ても同じ形 ---- */
 var KW=34,KH=44,KUJU_ID="7a0d0000-0000-4000-8000-000000000005",KM=null;
+/* 試しているあいだは、URL の末尾に #kuju を付けたときだけ入口が出る（2026-11-18、はる） */
+var KUJU_ON=false;try{KUJU_ON=location.hash==="#kuju"||window.__rokujoKuju===true;}catch(e){}
 function kMake(){
   var rs=20261118;function rnd(){rs=(rs*16807)%2147483647;return rs/2147483647;}
   var W=KW,H=KH,walk=new Uint8Array(W*H),feat=new Uint8Array(W*H),i,x,y;
@@ -1094,10 +1096,10 @@ function init3d(){
     box(x0-.22,1.6,-.08,x1+.22,1.68,.16,24);q4([x0-.26,1.68,.2],[x1+.26,1.68,.2],[x1+.12,1.86,0],[x0-.12,1.86,0],[0,1,1],[0,0],[1,0],[1,1],[0,1],24);
     box(x0-.14,1.84,-.02,x1+.14,1.9,.04,39);q4([x0+.12,0,-.03],[x1-.12,0,-.03],[x1-.12,1.5,-.03],[x0+.12,1.5,-.03],[0,0,1],[0,0],[1,0],[1,1],[0,1],22,201);
     box(3.5,1.12,.03,3.7,1.42,.18,28,null,266);LAMPS.push([3.6,1.27,.25,0]);
-    /* 左寄りに九重坂への石段：赤い柱と提灯、奥は上る段 */
-    var k0=.47,k1=1.33;box(k0,0,-.02,k0+.08,1.5,.08,36);box(k1-.08,0,-.02,k1,1.5,.08,36);box(k0-.1,1.42,-.03,k1+.1,1.5,.09,36);
+    /* 左寄りに九重坂への石段：赤い柱と提灯、奥は上る段（#kuju のときだけ） */
+    if(KUJU_ON){var k0=.47,k1=1.33;box(k0,0,-.02,k0+.08,1.5,.08,36);box(k1-.08,0,-.02,k1,1.5,.08,36);box(k0-.1,1.42,-.03,k1+.1,1.5,.09,36);
     for(var si=0;si<5;si++)box(k0+.08,si*.12,-.04-si*.2,k1-.08,si*.12+.12,-.24-si*.2+.2,29);
-    [k0+.18,k1-.18].forEach(function(lx){box(lx-.06,1.05,.04,lx+.06,1.28,.16,28,null,205);});LAMPS.push([.9,1.2,.25,0]);})();
+    [k0+.18,k1-.18].forEach(function(lx){box(lx-.06,1.05,.04,lx+.06,1.28,.16,28,null,205);});LAMPS.push([.9,1.2,.25,0]);}})();
   var townN=V.length/10;
   var vaoT=gl.createVertexArray();gl.bindVertexArray(vaoT);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
   [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
@@ -1220,7 +1222,8 @@ function init3d(){
   /* ---- 九重坂の形。地面は段々（奥ほど高い）。歩けないマスは建物で、九龍のほうは高く暗く、九份のほうは低く木と瓦。
      路地の上に提灯の列、電線、張り出した部屋。看板が光る ---- */
   var KLAMPS=[],KDECOR=[],kuN=0,vaoK=null;
-  (function(){V=[];var m=km(),W=m.W,H=m.H,C=CELL,x,y,k,i,rnd=m.rnd;
+  /* 九重坂に入ったときに一度だけ作る（ほかの人の読み込みを重くしない） */
+  function buildKuju(){if(vaoK)return;V=[];var m=km(),W=m.W,H=m.H,C=CELL,x,y,k,i,rnd=m.rnd;
     var KR=[201,203,205,207,209,211,213,215],NEON=[240,241,242,243,244,245,246,247,256,262];
     function G(x,y){return kGnd(x,y);}
     function solid(x,y){return x<0||y<0||x>=W||y>=H?true:!m.walk[y*W+x];}
@@ -1237,8 +1240,8 @@ function init3d(){
         if(m.feat[kk]&2){box(x0+.02,g,z0+.18,x0+.07,g+1.5,z0+.25,36);box(x1-.07,g,z0+.18,x1-.02,g+1.5,z0+.25,36);box(x0-.04,g+1.42,z0+.16,x1+.04,g+1.5,z0+.27,36);box(x0-.06,g+1.5,z0+.15,x1+.06,g+1.55,z0+.28,24);}
         /* 頭の上：提灯（九份の坂）、電線と張り出した部屋（九龍） */
         var ns=solid(x-1,y)&&solid(x+1,y),ew=solid(x,y-1)&&solid(x,y+1);
-        if(!kz&&(m.feat[kk]&1)&&y%2===0){for(i=0;i<2;i++){var lx=x0+.12+i*.22,ly=g+2.25+.05*i;box(lx-.05,ly-.13,z0+.17,lx+.05,ly,z0+.27,28,null,KR[(x+y+i)%8]);}KLAMPS.push([x0+C/2,g+2.1,z0+C/2,.9]);}
-        else if(!kz&&rnd()<.18){var lx2=x0+C/2;box(lx2-.06,g+2.2,z0+.17,lx2+.06,g+2.38,z0+.29,28,null,KR[(x*3+y)%8]);KLAMPS.push([lx2,g+2.1,z0+C/2,.6]);}
+        /* 提灯は宙に浮かせず、建物の壁に下げる（下の「路地に面した壁」で付ける） */
+        if(!kz&&(m.feat[kk]&1)&&y%2===0)KLAMPS.push([x0+C/2,g+1.6,z0+C/2,.7]);
         if(kz&&(ns||ew)&&rnd()<.22){var hb=g+3.0+rnd()*1.2;if(ns)box(x0-.02,hb,z0+.05,x1+.02,hb+.5,z1-.05,21,null,rnd()<.4?208:8);else box(x0+.05,hb,z0-.02,x1-.05,hb+.5,z1+.02,21,null,rnd()<.4?208:8);}
         if(rnd()<.35){var wy=g+2.6+rnd()*.9;if(ns)q4([x0,wy,z0+.2],[x1,wy+.06,z0+.2],[x1,wy+.075,z0+.215],[x0,wy+.015,z0+.215],[0,1,0],[0,0],[0,0],[0,0],[0,0],25);
           else q4([x0+.2,wy,z0],[x0+.2,wy+.06,z1],[x0+.215,wy+.075,z1],[x0+.215,wy+.015,z0],[0,1,0],[0,0],[0,0],[0,0],[0,0],25);}
@@ -1247,7 +1250,8 @@ function init3d(){
       /* 建物：段のいちばん低い所から上まで */
       var tp=m.top[kk],bot=Math.min(g,G(x,Math.min(H-1,y+1)))-.6;
       if(m.feat[kk]&4){box(x0,bot,z0,x0+.08,tp,z1,25);box(x0,tp,z0,x0+.12,tp+.05,z1,36);continue;}
-      box(x0,bot,z0,x1,tp,z1,kz?(rnd()<.5?21:26):21,"Y",kz?8:200+((x*7+y)%9));
+      var fs="Y";if(!(solid(x+1,y)&&T(x+1,y)>=tp))fs+="X";if(!(solid(x-1,y)&&T(x-1,y)>=tp))fs+="x";if(!(solid(x,y+1)&&T(x,y+1)>=tp))fs+="Z";if(!(solid(x,y-1)&&T(x,y-1)>=tp))fs+="z";
+      box(x0,bot,z0,x1,tp,z1,kz?(rnd()<.5?21:26):21,fs,kz?8:200+((x*7+y)%9));
       /* 屋根：九份は瓦のふた、九龍は平らで水の箱やアンテナ */
       if(!kz){box(x0-.06,tp,z0-.06,x1+.06,tp+.08,z1+.06,24);}else{box(x0,tp,z0,x1,tp+.04,z1,26);if(rnd()<.2)box(x0+.08,tp+.04,z0+.08,x0+.3,tp+.3,z0+.3,25);if(rnd()<.15)box(x0+.2,tp,z0+.2,x0+.23,tp+.9,z0+.23,25);}
       /* 路地に面した壁：窓、看板、店先、室外機 */
@@ -1265,7 +1269,10 @@ function init3d(){
         /* 看板：九龍は縦の光る看板、九份は赤い提灯の吊り看板 */
         if(rnd()<(kz?.35:.18)){var sy=gN+1.1+rnd()*(kz?2.2:.6);face(.35,sy,.65,sy+(kz?.9:.5),38,NEON[Math.floor(rnd()*NEON.length)],.16);
           var cc=[x0+C/2+d[0]*(C/2+.2),sy+.3,z0+C/2+d[1]*(C/2+.2)];KLAMPS.push([cc[0],cc[1],cc[2],.5,kz?[[1,.35,.75],[.3,.9,1],[1,.85,.3],[.45,1,.55]][Math.floor(rnd()*4)]:null]);}
-        if(!kz&&rnd()<.25){var c2=[x0+C/2+d[0]*(C/2+.14),0,z0+C/2+d[1]*(C/2+.14)],ly3=gN+1.15;box(c2[0]-.07,ly3,c2[2]-.07,c2[0]+.07,ly3+.2,c2[2]+.07,28,null,KR[(x*5+y)%8]);KLAMPS.push([c2[0],ly3+.1,c2[2],.7]);}
+        if(!kz&&rnd()<.45){var c2=[x0+C/2+d[0]*(C/2+.09),0,z0+C/2+d[1]*(C/2+.09)],ly3=gN+1.0+rnd()*.25;
+          box(c2[0]-.06,ly3,c2[2]-.06,c2[0]+.06,ly3+.18,c2[2]+.06,28,null,KR[(x*5+y)%8]);box(c2[0]-.008,ly3+.18,c2[2]-.008,c2[0]+.008,ly3+.34,c2[2]+.008,25);
+          var wb=[x0+C/2+d[0]*(C/2+.005),0,z0+C/2+d[1]*(C/2+.005)];box(Math.min(wb[0],c2[0])-.008,ly3+.33,Math.min(wb[2],c2[2])-.008,Math.max(wb[0],c2[0])+.008,ly3+.35,Math.max(wb[2],c2[2])+.008,25);
+          KLAMPS.push([c2[0],ly3+.1,c2[2],.7]);}
       });}
     /* 外：まわりの山と空。東（右）は海へ下る */
     var sky=[[-30,-6,-30],[W*C+30,-6,-30],[W*C+30,26,-30],[-30,26,-30]];
@@ -1285,9 +1292,9 @@ function init3d(){
       box(tx0+.1*i-.15,yb+.7,tz1-1.3,tx1-.1*i+.15,yb+.78,tz1+.25,24);
       for(k=0;k<12;k++){var lx4=tx0+.3+k*(tx1-tx0-.6)/11;box(lx4-.05,yb+.5,tz1+.12,lx4+.05,yb+.66,tz1+.22,28,null,KR[(k+i)%8]);}
       KLAMPS.push([(tx0+tx1)/2,yb+.5,tz1+.5,1.1]);}
-    kuN=V.length/10;vaoK=gl.createVertexArray();gl.bindVertexArray(vaoK);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
+    kuN=V.length/10;try{if(window.__rokujoTest===true)window.__kuN=kuN;}catch(e){}vaoK=gl.createVertexArray();gl.bindVertexArray(vaoK);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
     [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
-  })();
+  }
   var vaoJ=gl.createVertexArray();gl.bindVertexArray(vaoJ);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
   [[0,3,0],[1,3,12],[2,2,24],[3,2,32]].forEach(function(a){gl.enableVertexAttribArray(a[0]);gl.vertexAttribPointer(a[0],a[1],gl.FLOAT,false,40,a[2]);});
   V=[];
@@ -1360,12 +1367,16 @@ function init3d(){
   var kYaw=null,kT=0,kRight=[1,0,0];
   function kujuCam(now){var px=(me.fx+.5)*CELL,pz=(me.fy+.5)*CELL,gy=kGnd(Math.round(me.fx),Math.round(me.fy))+(me.jz||0)*S3*.3,a=W/H;
     var ang=Math.atan2(me.dir[0],-me.dir[1]);if(kYaw===null)kYaw=ang;var dt=Math.min(.1,Math.max(.001,(now-(kT||now))/1000));kT=now;
-    var dd=ang-kYaw;while(dd>Math.PI)dd-=2*Math.PI;while(dd<-Math.PI)dd+=2*Math.PI;kYaw+=dd*Math.min(1,dt*(reduce?30:3.5));
-    var fx2=Math.sin(kYaw),fz2=-Math.cos(kYaw),D=a<.8?2.3:2.0,HH=a<.8?1.25:1.05,mm=km();
-    function hitAt(qx,qz){var cx=Math.floor(qx/CELL),cz=Math.floor(qz/CELL);if(cx<0||cz<0||cx>=mm.W||cz>=mm.H)return false;return !mm.walk[cz*mm.W+cx]&&mm.top[cz*mm.W+cx]>gy+.4;}
+    var dd=ang-kYaw;while(dd>Math.PI)dd-=2*Math.PI;while(dd<-Math.PI)dd+=2*Math.PI;kYaw+=dd*Math.min(1,dt*(reduce?30:1.8));
+    var fx2=Math.sin(kYaw),fz2=-Math.cos(kYaw),D=a<.8?3.4:3.0,HH=a<.8?1.9:1.6,mm=km();
+    /* 後ろに壁があれば、近づくかわりに上がる（クレーンのように）。屋根より上なら当たらない */
+    var D0=D,hc=gy+HH;
+    function hitAt(qx,qz,hh){var cx=Math.floor(qx/CELL),cz=Math.floor(qz/CELL);if(cx<0||cz<0||cx>=mm.W||cz>=mm.H)return false;return !mm.walk[cz*mm.W+cx]&&mm.top[cz*mm.W+cx]>hh-.25;}
     for(var sd=.3;sd<=D;sd+=.06){var qx=px-fx2*sd,qz=pz-fz2*sd;
-      if(hitAt(qx,qz)||hitAt(qx+.24,qz)||hitAt(qx-.24,qz)||hitAt(qx,qz+.24)||hitAt(qx,qz-.24)){D=Math.max(.45,sd-.1);break;}}
-    var h=gy+HH*(.6+.4*Math.min(1,D/2.0));setCam([px-fx2*D,h,pz-fz2*D],[px+fx2*1.8,gy+.62,pz+fz2*1.8],a<.8?1.2:1.05);
+      /* 横は1マスの路地に収まる幅（左右0.15m）だけ見る。後ろは0.15m先まで */
+      var rxx=Math.cos(kYaw)*.15,rzz=Math.sin(kYaw)*.15;
+      if(hitAt(qx-fx2*.15,qz-fz2*.15,hc)||hitAt(qx+rxx,qz+rzz,hc)||hitAt(qx-rxx,qz-rzz,hc)){D=Math.max(.2,sd-.12);break;}}
+    var h=hc+(D0-D)*.9;setCam([px-fx2*D,h,pz-fz2*D],[px+fx2*1.6,gy+.45,pz+fz2*1.6],a<.8?1.15:.95);
     kRight=[Math.cos(kYaw),0,Math.sin(kYaw)];return pz;}
   /* 城下町：通りの幅が収まる距離から、少し低めに見る（天守が奥に見えるように） */
   function jokaCam(){var fz=Math.max(1.8,Math.min(JL-1.0,(me.fy+.5)*CELL)),a=W/H,px=(me.fx+.5)*CELL;
@@ -1415,6 +1426,7 @@ function init3d(){
       var usePost=!!(FX&&FX.post&&fxSize(cv.width,cv.height));
       /* 街：日と月の影の深さを、ときどき描き直す（家が動かないので毎回は要らない） */
       var LVP=null;
+      if(where==="kuju"&&!vaoK)buildKuju();
       var kj=where==="kuju",jk=where==="joka",PW=kj?(me.fx+.5)*CELL*2:jk?JW:RX,PLN=kj?KH*CELL:jk?JL:TL,pvao=kj?vaoK:jk?vaoJ:vaoT,pN=kj?kuN:jk?jokaN:townN;
       if(FX&&FX.shadow&&outside()){var fzS=Math.max(1.2,Math.min(PLN-1,(me.fy+.5)*CELL)),ctr=[PW/2,0,fzS-1.5],ld=norm([-.3,.8,.5]);
         LVP=mul(ortho(-7,7,-7,7,.1,40),lookM([ctr[0]+ld[0]*15,ctr[1]+ld[1]*15,ctr[2]+ld[2]*15],ctr));
@@ -1756,7 +1768,7 @@ function actTarget(){
   if(me.sit)return "stand";
   var bf=front(),seat=seatAt(bf[0],bf[1])||seatAt(me.x,me.y);
   if(where==="kuju"){if(kNpcFront())return "talk";if(me.y===KH-1&&me.dir[0]===0&&me.dir[1]===1)return "kout";return "jump";}
-  if(where==="town"&&me.y===0&&me.dir[0]===0&&me.dir[1]===-1&&(me.x===1||me.x===2))return "kuju";
+  if(KUJU_ON&&where==="town"&&me.y===0&&me.dir[0]===0&&me.dir[1]===-1&&(me.x===1||me.x===2))return "kuju";
   if(where==="joka"){if(fishing)return "reel";if(fishSpot())return "fish";
     if(me.y===JROWS-1&&me.dir[0]===0&&me.dir[1]===1)return "jout";
     if(me.y===17&&me.dir[0]===0&&me.dir[1]===-1&&(me.x===1||me.x===2))return "pray";
