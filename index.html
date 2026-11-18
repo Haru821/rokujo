@@ -1664,7 +1664,7 @@ function loop3(now){
   R3.begin();drawSprites();
   var fx0=me.x+me.dir[0],fy0=me.y+me.dir[1],mk=(!me.moving&&fx0>=0&&fx0<gw()&&fy0>=0&&fy0<gh())?[fx0,fy0]:null;
   R3.render(now,mk);
-  if(where==="town")houseTags();
+  if(where==="town"){houseTags();mistDraw(now);}
   fishDraw(now);
   liveTags();
   rx.strokeStyle="#f4efe4";rx.lineWidth=6;rx.strokeRect(3,3,W-6,H-6);
@@ -1698,7 +1698,7 @@ function step(dx,dy){
     petFollow([me.x,me.y]);me.hop=false;me.path=[[tx,ty]];me.from=[me.x,me.y];me.k=0;me.moving=true;me.t0=performance.now();if(up)setStatus(up);requestAnimationFrame(tick);return;}
   if(where==="kuju"&&!kWalk(tx,ty)){drawRoom();setStatus(ty>=KH?"九重坂の入口。橙のボタンで川沿いの町へ戻れる。":"壁。路地は、ほかの向きに続いている。");return;}
   if(tx<0||tx>=gw()||ty<0||ty>=gh()){drawRoom();if(where==="town"){if(doorAhead()<0)setStatus(ty<0||(ty<PL&&(tx<0||tx>=TCOLS))?"広場の塀。":tx<0||tx>=TCOLS?"家の壁。戸の前で横を向くと入れる。":"通りの端。");}else if(actTarget()==="jump")setStatus("そっちは壁。");return;}
-  if(where==="town"&&!walkable(tx,ty)){drawRoom();setStatus(ty<PL?(ty===0?"桜の木。":"井戸。"):"川がある。橋を渡る。");return;}
+  if(where==="town"&&!walkable(tx,ty)){drawRoom();var mq=mistAt();setStatus(mq?mq.name+"へのモヤ。橙のボタンで入る。":ty<PL?(ty===0?"桜の木。":"井戸。"):"川がある。橋を渡る。");return;}
   var tst=outside()?[]:room[ty*COLS+tx];
   if(turned&&tst.length){var tn=find(tst[tst.length-1]);drawRoom();setStatus(actTarget()==="dress"?"衣装台の前に立った。橙のボタンで着替えられる。拾うこともできる。":"「"+(tn?tn.name:"家具")+"」の方を向いた。拾うか、上に物を出せる。もう一度押すと、低ければ跳び乗る。");return;}
   var G=gw(),d=stackTop(ty*G+tx)-stackTop(me.y*G+me.x);
@@ -1808,7 +1808,8 @@ var stT=0;
 function setStatus(t){statusEl.textContent=t;statusEl.classList.remove("fade");clearTimeout(stT);stT=setTimeout(function(){statusEl.classList.add("fade");},5000);}
 function count(){var n=0;room.forEach(function(s){n+=s.length;});document.getElementById("count").textContent="部屋に "+n+"個";}
 function jSay(x,y){if(y>=JROWS)return "大門の外。橙のボタンで川沿いの町へ戻れる。";if(y>=22)return "店の前。通りを歩く。";if(y>=14)return x<=4?"神社。鳥居をくぐって、拝殿の前へ。":"五重塔。";if(y>=8)return "堀がある。赤い橋を渡る。";return "天守の石垣。";}
-function hint(){if(where==="mihon"){setStatus("見本の路地。3つの階を上り下りできる。↺ ↻ で回せる。");return;}
+function hint(){if(where==="town"&&MISTS.some(mistOn)){setStatus("川沿いの町。川の途中に色のついたモヤがある。岸で川の方を向くと、別の時代へ行ける。");return;}
+  if(where==="mihon"){setStatus("見本の路地。3つの階を上り下りできる。↺ ↻ で回せる。");return;}
   if(where==="kuju"){setStatus("九重坂。迷路の坂の街。矢印は画面から見た向き。上の茶屋、長い石段、奥の稲荷。夜は狐が出る。");return;}
   if(where==="joka"){setStatus("城下町。提灯の通りの先に神社と五重塔、堀の向こうに天守。神社でお参りとおみくじ、堀で釣りができる。");return;}
   if(where==="town"){setStatus("川沿いの町。両岸に通りがあり、橋で渡れる。家の戸の方を向き、橙のボタンで入る。明かりのついた家には、誰かがいる。");return;}setStatus(where==="mine"?"矢印か WASD で歩く。携帯は畳に指を置いて、行きたい向きへずらす。橙の印が目の前の畳。衣装台や壁の短冊の前では、橙のボタンで使える。右の壁の奥の戸から外に出られる。":visitNm+"の部屋。歩けるけれど、物は動かせない。下で短冊に返事を書ける。右の壁の奥の戸から外に出られる。");}
@@ -1874,11 +1875,12 @@ function placePet(){
   pet.from=[pet.x,pet.y];pet.t0=0;
 }
 /* 橙のボタン：衣装台や壁の短冊に向いていれば、それを使う。ほかは跳ぶ */
-var ACTS={mihon:"見本の路地へ",mout:"川沿いの町へ",kuju:"九重坂へ",kout:"川沿いの町へ",talk:"話しかける",joka:"城下町へ",jout:"川沿いの町へ",pray:"お参りする",kuji:"おみくじ",fish:"釣る",reel:"上げる",jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
+var ACTS={mist:"モヤに入る",mihon:"見本の路地へ",mout:"川沿いの町へ",kuju:"九重坂へ",kout:"川沿いの町へ",talk:"話しかける",joka:"城下町へ",jout:"川沿いの町へ",pray:"お参りする",kuji:"おみくじ",fish:"釣る",reel:"上げる",jump:"跳ぶ",dress:"着替える",write:"短冊を書く",out:"外に出る",door:"入る",homedoor:"家に入る",sit:"座る",stand:"立つ"},actNow="jump";
 function actTarget(){
   if(me.sit)return "stand";
   var bf=front(),seat=seatAt(bf[0],bf[1])||seatAt(me.x,me.y);
   if(where==="mihon"){if(me.y===MH-1&&(me.lv||0)===0&&me.dir[0]===0&&me.dir[1]===1)return "mout";return "jump";}
+  if(where==="town"&&!fishing&&mistAt())return "mist";
   if(MIHON_ON&&where==="town"&&me.y===0&&me.dir[0]===0&&me.dir[1]===-1&&(me.x===1||me.x===2))return "mihon";
   if(where==="kuju"){if(kNpcFront())return "talk";if(me.y===KH-1&&me.dir[0]===0&&me.dir[1]===1)return "kout";return "jump";}
   if(KUJU_ON&&where==="town"&&me.y===0&&me.dir[0]===0&&me.dir[1]===-1&&(me.x===1||me.x===2))return "kuju";
@@ -1964,6 +1966,7 @@ function syncAct(){
   else if(a==="joka")setStatus("城下町への門。橙のボタンでくぐる。");
   else if(a==="kuju")setStatus("九重坂への石段。橙のボタンで入る。");
   else if(a==="mihon")setStatus("見本の路地への石段。橙のボタンで入る。");
+  else if(a==="mist"){var mm=mistAt();if(mm)setStatus(mm.name+"へのモヤ。橙のボタンで入る。");}
   else if(a==="mout")setStatus("路地の入口。橙のボタンで川沿いの町へ戻る。");
   else if(a==="kout")setStatus("九重坂の入口。橙のボタンで川沿いの町へ戻る。");
   else if(a==="talk"){var nn=kNpcFront();if(nn)setStatus(nn.n+"がいる。橙のボタンで話しかける。");}
@@ -1977,6 +1980,7 @@ function act(){
   var a=actTarget();
   if(a==="kuju"){goKuju();return;}
   if(a==="mihon"){goMihon();return;}
+  if(a==="mist"){var mt=mistAt();if(mt)mistGo(mt);return;}
   if(a==="mout"){goTownFromKuju();return;}
   if(a==="kout"){goTownFromKuju();return;}
   if(a==="talk"){var tn=kNpcFront();if(tn)kTalk(tn);return;}
@@ -2402,6 +2406,25 @@ function goJoka(){
   liveJoin();el("visit-bar").hidden=false;el("visit-name").textContent="城下町にいる";
   show("room");setStatus("城下町に来た。提灯の通りの先に、神社と五重塔、その奥に天守。");
 }
+/* ---- 川のモヤ（2026-11-18、はる）：川の途中に浮かぶ、別の時代へ行けるモヤ。岸で川の方を向いて入る。
+   城下町はいつも。九重坂と見本の路地は、試しているあいだ #kuju・#mihon のときだけ ---- */
+var MISTS=[{to:"joka",row:PL+8,c:[255,176,80],name:"城下町"},{to:"kuju",row:PL+23,c:[230,90,200],name:"九重坂"},{to:"mihon",row:PL+39,c:[90,220,200],name:"見本の路地"}];
+function mistOn(m){return m.to==="joka"||(m.to==="kuju"&&KUJU_ON)||(m.to==="mihon"&&MIHON_ON);}
+function mistAt(){if(where!=="town"||me.sit||me.dir[1]!==0)return null;for(var i=0;i<MISTS.length;i++){var m=MISTS[i];if(!mistOn(m))continue;
+  if((me.y===m.row||me.y===m.row+1)&&((me.x===2&&me.dir[0]===1)||(me.x===TCOLS-3&&me.dir[0]===-1)))return m;}return null;}
+function mistGo(m){if(m.to==="joka")goJoka();else if(m.to==="kuju")goKuju();else goMihon();}
+/* 戻るときは、そのモヤの岸に出る */
+function mistBack(to){var m=null;MISTS.forEach(function(q){if(q.to===to)m=q;});if(!m)return false;me.x=me.fx=2;me.y=me.fy=m.row;me.dir=[1,0];return true;}
+/* モヤの絵：川の上で、色のついた霧がゆっくり渦を巻く。近いと名前が出る */
+function mistDraw(now){if(where!=="town"||!R3||!R3.projW)return;
+  MISTS.forEach(function(m,mi){if(!mistOn(m))return;var cx=TCOLS*CELLM/2,cz=(m.row+1)*CELLM,q=R3.projW([cx,.35,cz]);if(!q)return;var dist=q[3],sc=Math.max(.35,Math.min(3,7.5/dist));
+    rx.save();rx.globalCompositeOperation="lighter";var t=now/1000;
+    for(var i=0;i<9;i++){var a=t*.5*(i%2?1:-1)+i*.7,rr=(18+i*4)*sc,px=q[0]+Math.cos(a)*rr*.9,py=q[1]+Math.sin(a*1.3)*rr*.35-i*1.5*sc,r=(26+12*Math.sin(t*1.1+i))*sc;
+      var g=rx.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,"rgba("+m.c[0]+","+m.c[1]+","+m.c[2]+",.22)");g.addColorStop(1,"rgba("+m.c[0]+","+m.c[1]+","+m.c[2]+",0)");rx.fillStyle=g;rx.beginPath();rx.arc(px,py,r,0,6.2832);rx.fill();}
+    var g2=rx.createRadialGradient(q[0],q[1]-10*sc,0,q[0],q[1]-10*sc,22*sc);g2.addColorStop(0,"rgba(255,250,235,.35)");g2.addColorStop(1,"rgba(255,250,235,0)");rx.fillStyle=g2;rx.beginPath();rx.arc(q[0],q[1]-10*sc,22*sc,0,6.2832);rx.fill();
+    rx.restore();
+    if(dist<7){rx.font='12px "DotGothic16",monospace';rx.textAlign="center";rx.textBaseline="middle";var lb=m.name+"へのモヤ",w=rx.measureText(lb).width+12;
+      rx.fillStyle="rgba(21,24,43,.75)";rx.fillRect(Math.round(q[0]-w/2),Math.round(q[1]-58*sc-9),w,18);rx.fillStyle="rgb("+m.c[0]+","+m.c[1]+","+m.c[2]+")";rx.fillText(lb,q[0],q[1]-58*sc+1);}});}
 /* 九重坂へ：川沿いの町の広場の奥（左寄り）の石段から */
 function goKuju(){
   if(phase!=="in"||me.moving||me.jumping||!R3)return;
@@ -2417,16 +2440,16 @@ function goMihon(){
 }
 function goTownFromKuju(){me.lv=0;
   if(phase!=="in"||me.moving||me.jumping)return;
-  el("rot").hidden=true;where="town";me.x=me.fx=me.x<KW/2?1:2;me.y=me.fy=1;me.dir=[0,1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;me.sit=null;placePet();
+  var fromP=where;el("rot").hidden=true;where="town";me.x=me.fx=me.x<KW/2?1:2;me.y=me.fy=1;me.dir=[0,1];mistBack(fromP);me.path=[];me.moving=false;me.jumping=false;me.jz=0;me.sit=null;placePet();
   liveJoin();el("visit-bar").hidden=false;el("visit-name").textContent="川沿いの町にいる";
-  show("room");setStatus("川沿いの町に戻った。後ろが九重坂への石段。");
+  show("room");setStatus("川沿いの町に戻った。目の前がモヤ。");
 }
 /* 城下町から川沿いの町へ：広場の奥の門の前に出る */
 function goTownGate(){
   if(phase!=="in"||me.moving||me.jumping)return;
-  where="town";me.x=me.fx=me.x<=6?7:8;me.y=me.fy=1;me.dir=[0,1];me.path=[];me.moving=false;me.jumping=false;me.jz=0;me.sit=null;placePet();
+  where="town";me.x=me.fx=me.x<=6?7:8;me.y=me.fy=1;me.dir=[0,1];mistBack("joka");me.path=[];me.moving=false;me.jumping=false;me.jz=0;me.sit=null;placePet();
   liveJoin();el("visit-bar").hidden=false;el("visit-name").textContent="川沿いの町にいる";
-  show("room");setStatus("川沿いの町に戻った。後ろが城下町への門。");
+  show("room");setStatus("川沿いの町に戻った。目の前が城下町へのモヤ。");
 }
 /* 神社：お参りと、おみくじ（何度でも） */
 var KUJI=[["大吉",8,"願いごと、かなう。"],["中吉",14,"待ち人、近く来る。"],["小吉",18,"小さな良いことが続く。"],["吉",24,"いつもどおりが吉。"],["末吉",16,"あとから良くなる。"],["凶",14,"今日は、ゆっくり休む。"],["大凶",6,"かえって運が開ける。"]];
